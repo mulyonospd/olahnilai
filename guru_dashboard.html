@@ -1,0 +1,4400 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Guru - Sistem Nilai Pro</title>
+    <!-- LIBRARY SUPABASE & KONFIGURASI PROYEK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <!-- LIBRARY EXCELJS UNTUK EKSPOR REKAP NILAI (.XLSX) MULTI-SHEET -->
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+    <!-- LIBRARY QR CODE UNTUK POP-UP TRAKTIR KOPI -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        /* =====================================================================
+           1. VARIABEL TEMA (DARK MODE DEFAULT & LIGHT MODE)
+           ===================================================================== */
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --primary-soft: rgba(59, 130, 246, 0.16);
+            --success: #10b981;
+            --success-soft: rgba(16, 185, 129, 0.16);
+            --warning: #f59e0b;
+            --warning-soft: rgba(245, 158, 11, 0.16);
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --danger-soft: rgba(239, 68, 68, 0.16);
+
+            --bg-body: linear-gradient(135deg, #070b14 0%, #111827 50%, #0f172a 100%);
+            --header-bg: linear-gradient(135deg, #020617 0%, #1e1b4b 55%, #0f172a 100%);
+            --card-bg: rgba(30, 41, 59, 0.92);
+            --card-header-bg: rgba(15, 23, 42, 0.72);
+            --surface-soft: rgba(15, 23, 42, 0.55);
+            --row-hover: rgba(59, 130, 246, 0.10);
+            --sub-row-bg: rgba(59, 130, 246, 0.18);
+
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --input-bg: #0f172a;
+            --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.35);
+            --scrollbar-thumb: #475569;
+        }
+
+        [data-theme="light"] {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --primary-soft: rgba(37, 99, 235, 0.12);
+            --success: #059669;
+            --success-soft: rgba(5, 150, 105, 0.12);
+            --warning: #d97706;
+            --warning-soft: rgba(217, 119, 6, 0.14);
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --danger-soft: rgba(220, 38, 38, 0.12);
+
+            --bg-body: linear-gradient(135deg, #e0e7ff 0%, #f1f5f9 50%, #dbeafe 100%);
+            --header-bg: linear-gradient(135deg, #1e3a8a 0%, #312e81 55%, #1e293b 100%);
+            --card-bg: rgba(255, 255, 255, 0.96);
+            --card-header-bg: #f8fafc;
+            --surface-soft: #f1f5f9;
+            --row-hover: rgba(37, 99, 235, 0.06);
+            --sub-row-bg: #e0e7ff;
+
+            --border-color: #cbd5e1;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --input-bg: #ffffff;
+            --shadow-card: 0 8px 24px rgba(15, 23, 42, 0.08);
+            --scrollbar-thumb: #94a3b8;
+        }
+
+        /* =====================================================================
+           2. RESET & TATA LETAK UTAMA (FULL HEIGHT DESKTOP)
+           ===================================================================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        html, body {
+            height: 100%;
+            background: var(--bg-body);
+            color: var(--text-main);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .app-shell {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 12px 16px 10px 16px;
+            gap: 10px;
+            overflow: hidden;
+        }
+
+        /* Custom Scrollbar Halus */
+        ::-webkit-scrollbar {
+            width: 7px;
+            height: 7px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 999px;
+        }
+
+        /* =====================================================================
+           3. HEADER APLIKASI
+           ===================================================================== */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: var(--header-bg);
+            padding: 12px 20px;
+            border-radius: 14px;
+            color: #ffffff;
+            box-shadow: var(--shadow-card);
+            flex-shrink: 0;
+        }
+
+        .brand-area h1 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+            line-height: 1.2;
+            color: #ffffff;
+        }
+
+        .brand-area .school-subtitle {
+            font-size: 0.9rem;
+            color: #cbd5e1;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .academic-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            padding: 7px 14px;
+            border-radius: 10px;
+            font-size: 0.86rem;
+            font-weight: 600;
+            color: #f8fafc;
+            backdrop-filter: blur(6px);
+        }
+
+        /* =====================================================================
+           4. GRID 3 PANEL UTAMA (32% | 31% | 37%) FULL HEIGHT
+              Panel 3 diberi ruang sedikit lebih lega untuk kolom Keterangan
+           ===================================================================== */
+        .panels-grid {
+            display: grid;
+            grid-template-columns: 32fr 31fr 37fr;
+            gap: 12px;
+            flex: 1;
+            min-height: 0; /* Penting agar scroll internal berjalan sempurna */
+        }
+
+        .panel-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: var(--card-header-bg);
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .panel-title {
+            font-size: 1.04rem;
+            font-weight: 800;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .panel-footer {
+            padding: 10px 16px;
+            background: var(--card-header-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        /* =====================================================================
+           5. KOMPONEN UMUM: TOMBOL, BADGE, KOTAK INFO, TABEL
+           ===================================================================== */
+        button, .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: var(--primary);
+            color: #ffffff;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 9px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.86rem;
+            transition: background 0.2s, transform 0.15s, opacity 0.2s;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        button:hover:not(:disabled), .btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.78rem;
+            border-radius: 7px;
+        }
+
+        .btn-block {
+            width: 100%;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+        .btn-danger:hover:not(:disabled) {
+            background: var(--danger-hover);
+        }
+
+        .btn-success {
+            background: var(--success);
+        }
+        .btn-success:hover:not(:disabled) {
+            filter: brightness(0.92);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+        }
+        .btn-outline:hover:not(:disabled) {
+            background: var(--surface-soft);
+            color: var(--text-main);
+        }
+
+        .section-heading {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--primary);
+            padding-bottom: 6px;
+            border-bottom: 1px dashed var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-box {
+            background: var(--surface-soft);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 11px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .walas-label {
+            font-size: 0.94rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .walas-label strong {
+            color: var(--primary);
+            font-size: 1rem;
+        }
+
+        /* Tabel Rapi & Anti-Tumpuk */
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: var(--surface-soft);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        thead th {
+            background: var(--card-header-bg);
+            color: var(--text-main);
+            font-weight: 700;
+            text-align: left;
+            padding: 8px 9px;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        /* Kolom Header Tabel yang Dapat Diurutkan (Klik untuk Sort Otomatis) */
+        thead th.sortable-th {
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        thead th.sortable-th:hover {
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        thead th.sortable-th.sort-active {
+            color: var(--primary);
+        }
+
+        .th-sort-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .th-sort-center {
+            justify-content: center;
+        }
+
+        .sort-icon {
+            font-size: 0.68rem;
+            opacity: 0.45;
+            transition: opacity 0.15s ease, color 0.15s ease;
+        }
+
+        thead th.sortable-th:hover .sort-icon,
+        thead th.sortable-th.sort-active .sort-icon {
+            opacity: 1;
+            color: var(--primary);
+        }
+
+        tbody td {
+            padding: 7px 9px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background: var(--row-hover);
+        }
+
+        /* Tabel Khusus Panel 3 Rekap Nilai agar kolom Keterangan lebih lega */
+        .rekap-table th,
+        .rekap-table td {
+            padding: 7px 7px;
+        }
+
+        .rekap-table .col-ket {
+            min-width: 230px;
+            width: 38%;
+        }
+
+        .text-center { text-align: center !important; }
+        .text-muted { color: var(--text-muted); }
+
+        .tingkat-group-row td {
+            background: var(--sub-row-bg) !important;
+            color: var(--text-main);
+            font-weight: 800;
+            font-size: 0.83rem;
+            padding: 6px 10px;
+            letter-spacing: 0.2px;
+        }
+
+        /* Badge Status & Prosentase */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 0.73rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .badge-success { background: var(--success-soft); color: var(--success); }
+        .badge-warning { background: var(--warning-soft); color: var(--warning); }
+        .badge-danger  { background: var(--danger-soft);  color: var(--danger); }
+        .badge-neutral { background: rgba(148, 163, 184, 0.2); color: var(--text-muted); }
+
+        .check-ok {
+            color: var(--success);
+            font-weight: 900;
+            font-size: 1rem;
+            line-height: 1;
+        }
+        .check-no {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .pct-progress {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--warning);
+            white-space: nowrap;
+        }
+        .pct-zero {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        /* Daftar Mapel Diampu (Panel 2 Bagian Bawah) */
+        .mapping-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .mapping-item {
+            background: var(--surface-soft);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+
+        .mapping-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        .mapping-mapel-name {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--text-main);
+        }
+
+        .mapping-tingkat-line {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .mapping-tingkat-line strong {
+            color: var(--text-main);
+        }
+
+        /* Keterangan Rekap Panel 3 (Lebar & Maksimal 3 Baris Rapi) */
+        .ket-list {
+            font-size: 0.75rem;
+            line-height: 1.4;
+            min-width: 220px;
+            max-width: 340px;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+        .ket-item-warn,
+        .ket-item-kkm,
+        .ket-item-more {
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .ket-item-warn {
+            color: var(--danger);
+        }
+        .ket-item-kkm {
+            color: var(--warning);
+        }
+        .ket-item-more {
+            color: var(--text-muted);
+            font-weight: 600;
+            font-style: italic;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 18px 14px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            background: var(--surface-soft);
+            border: 1px dashed var(--border-color);
+            border-radius: 10px;
+        }
+
+        /* =====================================================================
+           6. FOOTER DASHBOARD (1 BARIS PROPORSIONAL: TOMBOL TEMA + SAPAAN + META + TRAKTIR KOPI)
+           ===================================================================== */
+        .dashboard-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 7px 14px;
+            box-shadow: var(--shadow-card);
+            flex-shrink: 0;
+            min-height: 44px;
+        }
+
+        .footer-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .footer-center {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .footer-right {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .welcome-text {
+            font-size: 0.94rem;
+            font-weight: 700;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .welcome-text span {
+            color: var(--primary);
+        }
+
+        .welcome-meta {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .theme-toggle-footer {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--surface-soft);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+            white-space: nowrap;
+        }
+
+        .theme-toggle-footer:hover {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+            transform: none;
+        }
+
+        /* =====================================================================
+           6B. TOMBOL & MODAL TRAKTIR KOPI PENGEMBANG (IDENTIK ADMIN DASHBOARD)
+               Hanya muncul untuk akun sekolah Free (is_free = true)
+           ===================================================================== */
+        @keyframes traktirShimmerGlow {
+            0%, 100% {
+                filter: brightness(1.06);
+                box-shadow: 0 0 14px rgba(251, 191, 36, 0.75), 0 2px 8px rgba(245, 158, 11, 0.45);
+                transform: scale(1);
+            }
+            50% {
+                filter: brightness(0.84);
+                box-shadow: 0 0 5px rgba(251, 191, 36, 0.25), 0 1px 4px rgba(245, 158, 11, 0.2);
+                transform: scale(0.985);
+            }
+        }
+
+        button.btn-traktir-kopi {
+            width: auto;
+            height: 34px;
+            padding: 0 15px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #fde047 0%, #fbbf24 50%, #f59e0b 100%);
+            color: #1e1b08;
+            border: 1.5px solid #fef08a;
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.2px;
+            cursor: pointer;
+            flex-shrink: 0;
+            animation: traktirShimmerGlow 2.4s ease-in-out infinite;
+        }
+
+        button.btn-traktir-kopi:hover:not(:disabled) {
+            animation-play-state: paused;
+            filter: brightness(1.12);
+            background: linear-gradient(135deg, #fef08a 0%, #fde047 50%, #fbbf24 100%);
+            color: #1e1b08;
+            transform: none;
+        }
+
+        /* Kotak QR & Nomor Donasi pada Modal Traktir Kopi */
+        .traktir-modal-card {
+            max-width: 400px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .traktir-qr-box {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 12px;
+            border: 2px solid #fbbf24;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.25);
+            margin: 10px auto;
+        }
+
+        .traktir-number-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: var(--input-bg);
+            border: 1.5px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-top: 12px;
+        }
+
+        /* =====================================================================
+           7. MODAL / POPUP STYLES
+           ===================================================================== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.72);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 16px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 620px;
+            max-height: 88vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+            overflow: hidden;
+            animation: modalPop 0.18s ease-out;
+        }
+
+        .modal-box.modal-sm {
+            max-width: 440px;
+        }
+
+        .modal-box.modal-lg {
+            max-width: 760px;
+        }
+
+        /* =====================================================================
+           7B. KOMPONEN POPUP UNDUH REKAP NILAI (CHECKLIST ROMBEL)
+           ===================================================================== */
+        .unduh-rekap-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px 13px;
+            border-radius: 10px;
+            background: var(--card-header-bg);
+            border: 1px solid var(--border-color);
+        }
+
+        .unduh-rekap-table-wrap {
+            max-height: 360px;
+            overflow: auto;
+        }
+
+        .unduh-rekap-table th,
+        .unduh-rekap-table td {
+            padding: 8px 9px;
+        }
+
+        .unduh-rekap-row {
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .unduh-rekap-row.selected {
+            background: var(--primary-soft);
+        }
+
+        .unduh-rekap-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--success);
+        }
+
+        .unduh-rekap-note {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.45;
+            background: var(--surface-soft);
+            border: 1px solid var(--border-color);
+            border-radius: 9px;
+            padding: 9px 12px;
+        }
+
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.95); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            background: var(--card-header-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .modal-close {
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 1.3rem;
+            padding: 2px 8px;
+        }
+        .modal-close:hover {
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .modal-body {
+            padding: 18px 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .modal-footer {
+            padding: 13px 20px;
+            background: var(--card-header-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        /* Form Inputs di dalam Modal */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-size: 0.86rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 9px;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-soft);
+        }
+
+        /* Item Pilihan Rombel (Wali Kelas & Mapping) */
+        .choice-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .choice-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--surface-soft);
+            cursor: pointer;
+        }
+
+        .choice-item.disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .choice-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        /* Kartu Input TP */
+        .tp-row-card {
+            background: var(--surface-soft);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 11px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .tp-row-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .char-counter {
+            font-size: 0.76rem;
+            font-weight: 600;
+        }
+        .char-counter.valid { color: var(--success); }
+        .char-counter.invalid { color: var(--danger); }
+
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .checkbox-pill {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--surface-soft);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Baris Aksi TP (Input Manual & Ambil dari Guru Lain) */
+        .tp-action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .tp-action-buttons {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-import-tp {
+            background: var(--primary-soft);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .btn-import-tp:hover:not(:disabled) {
+            background: var(--primary);
+            color: #ffffff;
+        }
+
+        .btn-import-tp:disabled {
+            background: var(--surface-soft);
+            color: var(--text-muted);
+            border-color: var(--border-color);
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        /* Modal Bertingkat (Popup Ambil TP di atas Popup Kelola TP) */
+        .modal-overlay.modal-top {
+            z-index: 1050;
+        }
+
+        /* Daftar Guru Sumber TP */
+        .import-guru-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 170px;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
+        .import-guru-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--surface-soft);
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .import-guru-card:hover {
+            border-color: var(--primary);
+            background: var(--row-hover);
+        }
+
+        .import-guru-card.active {
+            border-color: var(--primary);
+            background: var(--primary-soft);
+        }
+
+        .import-guru-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .import-guru-name {
+            font-size: 0.89rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .import-guru-meta {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+        }
+
+        /* Toolbar & Checklist TP yang Akan Diambil */
+        .import-tp-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 8px 11px;
+            border-radius: 9px;
+            background: var(--card-header-bg);
+            border: 1px solid var(--border-color);
+        }
+
+        .import-select-all-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: var(--text-main);
+            cursor: pointer;
+        }
+
+        .import-tp-list {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            max-height: 230px;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
+        .import-tp-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 9px 11px;
+            border-radius: 9px;
+            border: 1px solid var(--border-color);
+            background: var(--surface-soft);
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .import-tp-item:hover {
+            border-color: var(--primary);
+            background: var(--row-hover);
+        }
+
+        .import-tp-item input[type="checkbox"] {
+            margin-top: 3px;
+            flex-shrink: 0;
+        }
+
+        .import-tp-content {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .import-tp-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .import-tp-num {
+            font-size: 0.76rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .import-tp-desc {
+            font-size: 0.86rem;
+            color: var(--text-main);
+            line-height: 1.45;
+            word-break: break-word;
+        }
+
+        /* Toast Notifikasi */
+        .toast {
+            position: fixed;
+            bottom: 62px;
+            right: 20px;
+            z-index: 1100;
+            background: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--primary);
+            border-left: 5px solid var(--primary);
+            padding: 12px 18px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+            display: none;
+            max-width: 360px;
+        }
+        .toast.show { display: block; animation: modalPop 0.2s ease-out; }
+        .toast.error { border-color: var(--danger); border-left-color: var(--danger); }
+        .toast.success { border-color: var(--success); border-left-color: var(--success); }
+
+        /* =====================================================================
+           8. RESPONSIF LAYAR TABLET & HP
+           ===================================================================== */
+        @media (max-width: 1150px) {
+            html, body {
+                height: auto;
+            }
+            .app-shell {
+                height: auto;
+                min-height: 100vh;
+                overflow: visible;
+                padding: 12px;
+            }
+            .panels-grid {
+                grid-template-columns: 1fr;
+                gap: 14px;
+            }
+            .panel-card {
+                max-height: none;
+            }
+            .panel-body {
+                max-height: 520px;
+            }
+            .dashboard-footer {
+                flex-wrap: wrap;
+                padding: 8px 12px;
+                gap: 8px 12px;
+            }
+            .footer-center {
+                justify-content: flex-start;
+                text-align: left;
+            }
+        }
+
+        @media (max-width: 680px) {
+            .dashboard-header {
+                padding: 12px 14px;
+            }
+            .brand-area h1 {
+                font-size: 1.2rem;
+            }
+            .header-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .academic-badge {
+                font-size: 0.78rem;
+                padding: 6px 10px;
+            }
+            .dashboard-footer {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .footer-left,
+            .footer-center,
+            .footer-right {
+                width: 100%;
+                justify-content: flex-start;
+                text-align: left;
+            }
+            .footer-right {
+                flex-wrap: wrap;
+                justify-content: space-between;
+                gap: 8px;
+            }
+            .welcome-text {
+                font-size: 0.88rem;
+                white-space: normal;
+            }
+            .welcome-meta {
+                font-size: 0.78rem;
+                white-space: normal;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- =========================================================================
+     STRUKTUR UTAMA DASHBOARD GURU
+     ========================================================================= -->
+<div class="app-shell">
+
+    <!-- A. HEADER APLIKASI -->
+    <header class="dashboard-header">
+        <div class="brand-area">
+            <h1>Sistem Nilai Pro</h1>
+            <div class="school-subtitle" id="schoolNameDisplay">Memuat Nama Sekolah...</div>
+        </div>
+        <div class="header-right">
+            <div class="academic-badge" id="academicPeriodDisplay">
+                📅 Memuat Tahun Ajaran & Semester...
+            </div>
+            <button type="button" class="btn-danger" onclick="openLogoutModal()">
+                🚪 Logout
+            </button>
+        </div>
+    </header>
+
+    <!-- B. 3 PANEL UTAMA (32% | 31% | 37%) -->
+    <main class="panels-grid">
+
+        <!-- ===============================================================
+             PANEL 1 : WALI KELAS (32%)
+             =============================================================== -->
+        <section class="panel-card" id="panelWaliKelas">
+            <div class="panel-header">
+                <h2 class="panel-title">🏫 Wali Kelas</h2>
+                <button type="button" class="btn-outline btn-sm" id="btnUbahWalasTop" style="display:none;" onclick="openWalasModal()">
+                    Ubah Kelas
+                </button>
+            </div>
+
+            <div class="panel-body">
+                <!-- Info Kelas yang Diwalikelasi -->
+                <div class="info-box" id="walasStatusBox">
+                    <div class="walas-label" id="walasStatusText">Memuat status wali kelas...</div>
+                    <button type="button" class="btn-sm" id="btnPilihKelas" style="display:none;" onclick="openWalasModal()">
+                        Pilih Kelas
+                    </button>
+                </div>
+
+                <!-- Progres Input Nilai Semua Mapel (Hanya tampil jika Wali Kelas) -->
+                <div id="walasProgressSection" style="display:none; flex-direction:column; gap:10px;">
+                    <div class="section-heading">
+                        <span id="walasProgressHeadingTitle">Progres Input Nilai Semua Mapel (0%)</span>
+                        <span class="badge badge-neutral" id="walasMapelCountBadge">0 Mapel</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width:38px;">No</th>
+                                    <th class="sortable-th sort-active" data-sort-col="mapel" onclick="toggleWalasSort('mapel')" title="Klik untuk mengurutkan berdasarkan Nama Mapel">
+                                        <span class="th-sort-wrap"><span>Mapel</span><span class="sort-icon" id="sortIcon_mapel">▲</span></span>
+                                    </th>
+                                    <th class="sortable-th" data-sort-col="guru" onclick="toggleWalasSort('guru')" title="Klik untuk mengurutkan berdasarkan Nama Guru">
+                                        <span class="th-sort-wrap"><span>Guru Mapel</span><span class="sort-icon" id="sortIcon_guru">⇅</span></span>
+                                    </th>
+                                    <th class="text-center sortable-th" data-sort-col="prosentase" onclick="toggleWalasSort('prosentase')" title="Klik untuk mengurutkan berdasarkan Prosentase">
+                                        <span class="th-sort-wrap th-sort-center"><span>Prosentase</span><span class="sort-icon" id="sortIcon_prosentase">⇅</span></span>
+                                    </th>
+                                    <th class="text-center sortable-th" data-sort-col="status" onclick="toggleWalasSort('status')" title="Klik untuk mengurutkan berdasarkan Status">
+                                        <span class="th-sort-wrap th-sort-center"><span>Status</span><span class="sort-icon" id="sortIcon_status">⇅</span></span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="walasProgressTbody">
+                                <tr><td colspan="5" class="text-center text-muted">Memuat data progres...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Keterangan Jika Bukan Wali Kelas -->
+                <div id="nonWalasInfo" class="empty-state" style="display:none;">
+                    Anda saat ini berstatus <strong>Bukan Wali Kelas</strong>.<br>
+                    Jika Anda mendapat tugas sebagai wali kelas, klik tombol <strong>Ubah Kelas</strong> di atas.
+                </div>
+            </div>
+
+            <div class="panel-footer">
+                <button type="button" class="btn-success btn-block" id="btnLihatLegger" disabled onclick="goToLeggerPage()">
+                    📊 Lihat Legger Nilai Kelas
+                </button>
+            </div>
+        </section>
+
+        <!-- ===============================================================
+             PANEL 2 : INPUT TP DAN INPUT NILAI (31%)
+             =============================================================== -->
+        <section class="panel-card" id="panelInputTp">
+            <div class="panel-header">
+                <h2 class="panel-title">📝 Input TP dan Input Nilai</h2>
+                <button type="button" class="btn-sm" onclick="openTambahMapelModal()">
+                    + Tambah Mapel
+                </button>
+            </div>
+
+            <div class="panel-body">
+                <!-- Bagian Atas: Tabel Tujuan Pembelajaran -->
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <div class="section-heading">
+                        <span>Tujuan Pembelajaran</span>
+                        <span class="badge badge-neutral">Maks. 10 TP / Tingkat</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th class="text-center" style="width:36px;">No</th>
+                                    <th>Mata Pelajaran</th>
+                                    <th class="text-center">Tingkat</th>
+                                    <th class="text-center">Jumlah TP</th>
+                                    <th class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tpSummaryTbody">
+                                <tr><td colspan="5" class="text-center text-muted">Memuat data Tujuan Pembelajaran...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bagian Bawah: Daftar Mapel & Rombel yang Diampu -->
+                <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+                    <div class="section-heading">
+                        <span>Mata pelajaran yang diampu :</span>
+                    </div>
+                    <div id="mappingMapelContainer" class="mapping-list">
+                        <div class="empty-state">Memuat daftar mata pelajaran yang diampu...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-footer">
+                <button type="button" class="btn-block" onclick="goToInputNilaiPage()">
+                    🚀 Mulai Isi Nilai
+                </button>
+            </div>
+        </section>
+
+        <!-- ===============================================================
+             PANEL 3 : REKAP INPUT NILAI (37%)
+             =============================================================== -->
+        <section class="panel-card" id="panelRekapNilai">
+            <div class="panel-header">
+                <h2 class="panel-title">📋 Rekap Input Nilai</h2>
+                <button type="button" class="btn-outline btn-sm" onclick="loadDashboardData()" title="Muat ulang data">
+                    🔄 Refresh
+                </button>
+            </div>
+
+            <div class="panel-body">
+                <div class="table-wrap">
+                    <table class="rekap-table">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width:32px;">No</th>
+                                <th>Rombel</th>
+                                <th class="text-center" style="width:48px;">UH</th>
+                                <th class="text-center" style="width:52px;">PSTS</th>
+                                <th class="text-center" style="width:52px;">PSAS</th>
+                                <th class="text-center" style="width:110px;">Finalisasi</th>
+                                <th class="col-ket">Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rekapNilaiTbody">
+                            <tr><td colspan="7" class="text-center text-muted">Memuat rekap input nilai...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel-footer">
+                <button type="button" class="btn-success btn-block" id="btnOpenUnduhRekap" onclick="openUnduhRekapModal()">
+                    📥 Unduh Rekap Nilai
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- C. FOOTER 1 BARIS: TOMBOL GANTI TEMA + SAPAAN GURU + KODE & TOTAL ROMBEL + TOMBOL TRAKTIR KOPI (KHUSUS AKUN FREE) -->
+    <footer class="dashboard-footer">
+        <div class="footer-left">
+            <button type="button" class="theme-toggle-footer" id="themeToggleBtn" onclick="toggleTheme()" title="Ganti Tema Terang / Gelap">
+                <span id="themeIcon">☀️</span>
+                <span id="themeText">Mode Terang</span>
+            </button>
+        </div>
+        <div class="footer-center">
+            <div class="welcome-text" id="welcomeMessage">
+                Selamat Datang, Bapak/Ibu Guru...
+            </div>
+        </div>
+        <div class="footer-right">
+            <div class="welcome-meta" id="guruInfoMeta">
+                Menyinkronkan data pembelajaran...
+            </div>
+            <!-- KETERANGAN: Tombol Traktir Kopi hanya muncul jika akun sekolah Free (schools.is_free === true) -->
+            <button type="button" id="btnTraktirKopi" class="btn-traktir-kopi hidden" onclick="openTraktirKopiModal()" title="Dukung pengembangan Sistem Nilai Pro">
+                ☕ Traktir Kopi
+            </button>
+        </div>
+    </footer>
+</div>
+
+<!-- =========================================================================
+     POPUP 1: KONFIRMASI LOGOUT
+     ========================================================================= -->
+<div class="modal-overlay" id="modalLogout">
+    <div class="modal-box modal-sm">
+        <div class="modal-header">
+            <h3>⚠️ Konfirmasi Logout</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modalLogout')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="line-height:1.55; font-size:0.94rem;">
+                Apakah Anda yakin ingin keluar dari <strong>Dashboard Guru</strong>?<br>
+                Pastikan seluruh perubahan Tujuan Pembelajaran atau Mapping Anda sudah disimpan.
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-outline" onclick="closeModal('modalLogout')">Batal</button>
+            <button type="button" class="btn-danger" onclick="confirmLogout()">Ya, Keluar</button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     POPUP 2: PILIH KELAS WALI KELAS (VALIDASI ANTI-DOUBLE)
+     ========================================================================= -->
+<div class="modal-overlay" id="modalWalas">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>🏫 Pilih Kelas Wali Kelas</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modalWalas')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="text-muted" style="font-size:0.86rem;">
+                Pilih kelas yang Anda walikelasi pada tahun ajaran aktif, atau pilih <strong>Bukan Wali Kelas</strong>.
+                Kelas yang sudah dipilih oleh guru lain otomatis terkunci untuk menghindari wali kelas ganda.
+            </p>
+            <div id="walasChoiceList" class="choice-list">
+                <div class="empty-state">Memuat daftar rombel...</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-outline" onclick="closeModal('modalWalas')">Batal</button>
+            <button type="button" class="btn-success" id="btnSaveWalas" onclick="saveWalasSelection()">Simpan Pilihan</button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     POPUP 3: EDIT / INPUT TUJUAN PEMBELAJARAN (MAKS 10 CP, 10-100 KARAKTER)
+     ========================================================================= -->
+<div class="modal-overlay" id="modalEditTp">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>🎯 Kelola Tujuan Pembelajaran (TP / CP)</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modalEditTp')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label" for="tpMapelTingkatSelect">Pilih Mata Pelajaran & Tingkat</label>
+                <select id="tpMapelTingkatSelect" class="form-control" onchange="renderTpEditorRows()"></select>
+            </div>
+
+            <!-- BARIS ATURAN & TOMBOL AKSI TP (INPUT MANUAL & AMBIL DARI GURU LAIN) -->
+            <div class="tp-action-bar">
+                <span class="text-muted" style="font-size:0.82rem; flex:1; min-width:210px;">
+                    Aturan: Maksimal <strong>10 TP/CP</strong> per tingkat, panjang kalimat <strong>10 – 100 karakter</strong> (termasuk spasi). TP setiap guru berdiri sendiri.
+                </span>
+                <div class="tp-action-buttons">
+                    <button type="button" class="btn-sm btn-import-tp" id="btnAmbilTpGuruLain" disabled onclick="openAmbilTpGuruLainModal()" title="Belum ada guru lain yang menginput TP untuk mapel dan tingkat ini">
+                        📥 Ambil TP Guru Lain (Belum ada)
+                    </button>
+                    <button type="button" class="btn-sm" id="btnTambahBarisTp" onclick="addTpInputRow()">
+                        + Tambah TP
+                    </button>
+                </div>
+            </div>
+
+            <div id="tpEditorContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-outline" onclick="closeModal('modalEditTp')">Tutup</button>
+            <button type="button" class="btn-success" id="btnSaveTp" onclick="saveTpChanges()">Simpan Tujuan Pembelajaran</button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     POPUP 4: EDIT MAPPING ROMBEL PER MAPEL
+     ========================================================================= -->
+<div class="modal-overlay" id="modalEditMapping">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="modalEditMappingTitle">⚙️ Edit Mapping Rombel</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modalEditMapping')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="text-muted" style="font-size:0.85rem;">
+                Centang rombel yang Anda ampu untuk mata pelajaran ini. Anda dapat menambah atau menghapus centang jika terdapat kesalahan mapping dari admin sekolah.
+            </p>
+            <div id="editMappingRombelContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-outline" onclick="closeModal('modalEditMapping')">Batal</button>
+            <button type="button" class="btn-success" id="btnSaveMapping" onclick="saveEditMapping()">Simpan Perubahan</button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     POPUP 5: TAMBAH MAPEL (JIKA ADMIN LUPA MAPPING MAPEL)
+     ========================================================================= -->
+<div class="modal-overlay" id="modalTambahMapel">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>➕ Tambah Mata Pelajaran yang Diampu</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modalTambahMapel')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label" for="selectNewMapel">Pilih Mata Pelajaran</label>
+                <select id="selectNewMapel" class="form-control"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Pilih Tingkat & Rombel yang Diampu</label>
+                <div id="tambahMapelRombelContainer" style="display:flex; flex-direction:column; gap:12px;"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-outline" onclick="closeModal('modalTambahMapel')">Batal</button>
+            <button type="button" class="btn-success" id="btnSaveTambahMapel" onclick="saveTambahMapel()">Simpan Mapel</button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     POPUP 6: AMBIL TP DARI GURU LAIN (TINGKAT & MAPEL SAMA)
+     ========================================================================= -->
+<div class="modal-overlay modal-top" id="modalAmbilTpGuruLain">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div>
+                <h3>📥 Ambil TP dari Guru Lain</h3>
+                <div id="ambilTpSubtitle" class="text-muted" style="font-size:0.8rem; margin-top:2px;"></div>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('modalAmbilTpGuruLain')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- LANGKAH 1: PILIH GURU LAIN YANG SUDAH MENGINPUT TP -->
+            <div class="form-group">
+                <label class="form-label">1. Pilih Guru Sumber (Mapel & Tingkat Sama)</label>
+                <div id="importGuruListContainer" class="import-guru-list"></div>
+            </div>
+
+            <!-- LANGKAH 2: CEKLIST TP YANG INGIN DIAMBIL (SEMUA ATAU SEBAGIAN) -->
+            <div class="form-group">
+                <label class="form-label">2. Ceklist TP yang Ingin Diambil (Semua atau Sebagian)</label>
+                <div class="import-tp-toolbar">
+                    <label class="import-select-all-label">
+                        <input type="checkbox" id="chkSelectAllImportTp" onchange="toggleSelectAllImportTp(this.checked)">
+                        <span>Pilih Semua TP</span>
+                    </label>
+                    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                        <span class="badge badge-neutral" id="importSelectedCountBadge">0 dipilih</span>
+                        <span class="badge badge-success" id="importSlotInfoBadge">Sisa slot: 10 TP</span>
+                    </div>
+                </div>
+                <div id="importTpChecklistContainer" class="import-tp-list"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-outline" onclick="closeModal('modalAmbilTpGuruLain')">Batal</button>
+            <button type="button" class="btn-success" id="btnConfirmAmbilTp" disabled onclick="confirmAmbilTpDariGuruLain()">
+                ✓ Ambil TP Terpilih
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     POPUP 7: UNDUH REKAP NILAI (CEKLIST ROMBEL KE EXCEL .XLSX)
+     ========================================================================= -->
+<div class="modal-overlay" id="modalUnduhRekap">
+    <div class="modal-box modal-lg">
+        <div class="modal-header">
+            <div>
+                <h3>📥 Unduh Rekap Nilai (Excel .xlsx)</h3>
+                <div id="unduhRekapSubtitle" class="text-muted" style="font-size:0.8rem; margin-top:2px;">
+                    Pilih rombel yang akan diunduh (1 File Excel • 1 Rombel = 1 Sheet)
+                </div>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('modalUnduhRekap')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- TOOLBAR PILIH SEMUA & COUNTER -->
+            <div class="unduh-rekap-toolbar">
+                <label class="import-select-all-label">
+                    <input type="checkbox" id="chkSelectAllUnduhRekap" onchange="toggleSelectAllUnduhRekap(this.checked)">
+                    <span>Pilih Semua Rombel</span>
+                </label>
+                <span class="badge badge-success" id="unduhRekapSelectedBadge">0 rombel dipilih</span>
+            </div>
+
+            <!-- TABEL CEKLIST ROMBEL DENGAN PROSENTASE UH, PSTS, PSAS & STATUS FINALISASI -->
+            <div class="table-wrap unduh-rekap-table-wrap">
+                <table class="unduh-rekap-table">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width:42px;">Pilih</th>
+                            <th>Rombel</th>
+                            <th class="text-center" style="width:64px;">UH</th>
+                            <th class="text-center" style="width:68px;">PSTS</th>
+                            <th class="text-center" style="width:68px;">PSAS</th>
+                            <th class="text-center" style="width:130px;">Status Finalisasi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unduhRekapTbody">
+                        <tr><td colspan="6" class="text-center text-muted">Memuat daftar rombel...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- INFO FORMAT FILE HASIL UNDUHAN -->
+            <div class="unduh-rekap-note">
+                <strong>Format File:</strong> 1 file Excel (<code>.xlsx</code>) dengan nama <strong>Rekap_Nilai_<span id="unduhRekapNamaFilePreview">Nama Guru</span>.xlsx</strong>.
+                Setiap rombel tersimpan dalam 1 sheet terpisah berisi info Tingkat, Kelas, Mapel, Guru, KKM, serta tabel lengkap:
+                No, Nama Siswa, Nilai UH (TP 1 – TP 10), PSTS, PSAS, Tambahan, Nilai Raport (Asli &amp; Jadi), Peringkat, dan Deskripsi.
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-outline" onclick="closeModal('modalUnduhRekap')">Batal</button>
+            <button type="button" class="btn-success" id="btnConfirmUnduhRekap" disabled onclick="exportSelectedRekapToExcel()">
+                📥 Unduh Excel (.xlsx)
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     POPUP 8: TRAKTIR KOPI PENGEMBANG (IDENTIK DENGAN ADMIN DASHBOARD)
+     ========================================================================= -->
+<div class="modal-overlay" id="traktirKopiModal" onclick="handleTraktirOverlayClick(event)">
+    <div class="modal-box traktir-modal-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+            <h3 style="margin: 0; color: #f59e0b; font-size: 1.15rem; display: flex; align-items: center; gap: 6px;">☕ Traktir Kopi Pengembang</h3>
+            <button type="button" class="btn-outline btn-sm" onclick="closeTraktirKopiModal()" style="width: 30px; height: 30px; padding: 0; border-radius: 50%;">✕</button>
+        </div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 8px;">
+            Terima kasih telah menggunakan <strong style="color: var(--text-main);">Sistem Nilai Pro</strong>! Dukungan secangkir kopi dari Anda sangat berarti untuk pengembangan fitur dan pemeliharaan server.
+        </p>
+        <div class="traktir-qr-box">
+            <div id="traktirQrContainer" style="width: 190px; height: 190px; display: flex; align-items: center; justify-content: center;"></div>
+        </div>
+        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Scan QR Code di atas atau transfer melalui:</div>
+        <div class="traktir-number-box">
+            <div style="text-align: left;">
+                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Gopay / OVO / Pulsa</div>
+                <div id="donasiPhoneNumber" style="font-size: 1.12rem; font-weight: 800; color: var(--text-main); letter-spacing: 0.5px;">0852-1459-6325</div>
+            </div>
+            <button type="button" class="btn-success btn-sm" onclick="copyDonasiNumber()" style="width: auto; padding: 0 14px; height: 36px; font-weight: 700;">📋 Salin</button>
+        </div>
+        <div style="margin-top: 16px;">
+            <button type="button" class="btn-outline" onclick="closeTraktirKopiModal()" style="width: 100%;">Tutup</button>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST NOTIFIKASI -->
+<div class="toast" id="toastBox"></div>
+
+<!-- =========================================================================
+     SCRIPT LOGIKA APLIKASI DASHBOARD GURU
+     ========================================================================= -->
+<script>
+    // =========================================================================
+    // 1. INISIALISASI KLIEN SUPABASE & STATE GLOBAL
+    // =========================================================================
+    function getSupabaseClient() {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) return supabaseClient;
+        if (typeof _supabase !== 'undefined' && _supabase) return _supabase;
+        if (window.supabaseClient) return window.supabaseClient;
+        if (typeof supabase !== 'undefined' && typeof supabase.from === 'function') return supabase;
+        if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined' && window.supabase) {
+            return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+        return null;
+    }
+
+    const db = getSupabaseClient();
+
+    const state = {
+        guruSession: null,
+        guruRecord: null,
+        schoolId: null,
+        schoolRecord: null,
+        activeYear: null,
+        activeSemester: null,
+        allGurus: [],
+        allMapels: [],
+        allRombels: [],
+        allAssignments: [],
+        myGuruIds: [],
+        myAssignments: [],
+        allCps: [],
+        myCps: [],
+        studentsByRombel: {},
+        gradesCache: [],
+        variabelGlobal: null,
+        walasRombel: null,
+        walasRowsData: [],
+        walasSort: {
+            column: 'mapel',
+            direction: 'asc'
+        },
+        editingMappingMapelId: null,
+        tpDraftRows: [],
+        rekapSummaryList: [],
+        importTpState: {
+            mapelId: null,
+            tingkat: null,
+            otherGurus: [],
+            selectedGuruId: null
+        }
+    };
+
+    // =========================================================================
+    // 2. MANAJEMEN TEMA (TERANG / GELAP) - TERINTEGRASI DI FOOTER
+    // =========================================================================
+    function initTheme() {
+        const saved = localStorage.getItem('nilaiProTheme') || localStorage.getItem('theme') || 'dark';
+        applyTheme(saved);
+    }
+
+    function applyTheme(theme) {
+        const validTheme = theme === 'light' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', validTheme);
+        localStorage.setItem('nilaiProTheme', validTheme);
+        localStorage.setItem('theme', validTheme);
+
+        const iconEl = document.getElementById('themeIcon');
+        const textEl = document.getElementById('themeText');
+        if (validTheme === 'dark') {
+            iconEl.textContent = '☀️';
+            textEl.textContent = 'Mode Terang';
+        } else {
+            iconEl.textContent = '🌙';
+            textEl.textContent = 'Mode Gelap';
+        }
+    }
+
+    function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme');
+        applyTheme(current === 'dark' ? 'light' : 'dark');
+    }
+
+    // =========================================================================
+    // 3. UTILITAS UI (TOAST, MODAL, SAPAAN WAKTU, FORMAT TANGGAL, PROSENTASE)
+    // =========================================================================
+    let toastTimer = null;
+    function showToast(message, type = 'info') {
+        const el = document.getElementById('toastBox');
+        el.textContent = message;
+        el.className = 'toast show ' + (type === 'error' ? 'error' : type === 'success' ? 'success' : '');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+            el.classList.remove('show');
+        }, 3600);
+    }
+
+    function openModal(id) {
+        document.getElementById(id).classList.add('active');
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    // KETERANGAN: Tutup modal aktif saat tombol Escape ditekan
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+                modal.classList.remove('active');
+            });
+        }
+    });
+
+    function getGreetingByTime() {
+        const hour = new Date().getHours();
+        if (hour >= 4 && hour < 11) return 'Selamat Pagi';
+        if (hour >= 11 && hour < 15) return 'Selamat Siang';
+        if (hour >= 15 && hour < 18) return 'Selamat Sore';
+        return 'Selamat Malam';
+    }
+
+    function formatDateTimeId(isoString) {
+        if (!isoString) return '';
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        }) + ' ' + d.toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Helper: Hitung prosentase bulat per komponen (UH / PSTS / PSAS) secara konsisten (0 - 100)
+    function calcComponentPct(filledCount, totalCount) {
+        if (!totalCount || totalCount <= 0 || filledCount <= 0) return 0;
+        if (filledCount >= totalCount) return 100;
+        const rawPct = Math.round((filledCount / totalCount) * 100);
+        return Math.min(99, Math.max(1, rawPct));
+    }
+
+    // =========================================================================
+    // 4. CEK SESI LOGIN & INISIALISASI HALAMAN (REDIRECT KE login.html)
+    // =========================================================================
+    document.addEventListener('DOMContentLoaded', async () => {
+        initTheme();
+
+        const rawSession = sessionStorage.getItem('guruData');
+        if (!rawSession) {
+            alert('Anda belum login! Mengalihkan ke halaman login...');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        try {
+            state.guruSession = JSON.parse(rawSession);
+        } catch (err) {
+            console.error('Gagal membaca sesi guruData:', err);
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // Tampilkan Nama Sekolah & Sapaan Awal di Footer
+        const fullName = state.guruSession.display_name || state.guruSession.name || 'Guru';
+        const schoolName = state.guruSession.school_name || 'Sekolah Belum Teridentifikasi';
+
+        document.getElementById('schoolNameDisplay').textContent = schoolName;
+        document.getElementById('welcomeMessage').innerHTML =
+            `${getGreetingByTime()}, Bapak/Ibu Guru <span>${escapeHtml(fullName)}</span>`;
+
+        // KETERANGAN: Set visibilitas awal tombol Traktir Kopi dari sesi bila tersedia (akan diverifikasi ulang dari tabel schools)
+        if (typeof state.guruSession.is_free === 'boolean') {
+            updateTraktirKopiVisibility(state.guruSession.is_free === true);
+        } else {
+            updateTraktirKopiVisibility(false);
+        }
+
+        if (!db) {
+            showToast('Koneksi Supabase dari config.js tidak ditemukan.', 'error');
+            return;
+        }
+
+        await loadDashboardData();
+    });
+
+    // =========================================================================
+    // 5. AMBIL SELURUH DATA DASHBOARD DARI SUPABASE
+    //    TERMASUK AUTO-SINKRONISASI BEBAN MENGAJAR GURU & STATUS FREE/PREMIUM SEKOLAH
+    // =========================================================================
+    async function loadDashboardData() {
+        try {
+            const s = state.guruSession;
+            state.schoolId = s.school_id;
+
+            // 5.1 Pastikan school_id & data record guru lengkap (prioritaskan semua kecocokan identitas guru)
+            let guruQuery = db.from('gurus').select('*');
+            if (s.school_id) {
+                guruQuery = guruQuery.eq('school_id', s.school_id);
+            } else if (s.guru_id || s.id) {
+                guruQuery = guruQuery.eq('id', s.guru_id || s.id);
+            } else if (s.user_id) {
+                guruQuery = guruQuery.eq('user_id', s.user_id);
+            }
+            const { data: initialGuruRows } = await guruQuery;
+
+            // Temukan school_id dari sesi atau record guru
+            const matchedInitialGuru = (initialGuruRows || []).find(g =>
+                (s.guru_id && g.id === s.guru_id) ||
+                (s.id && g.id === s.id) ||
+                (s.user_id && g.user_id === s.user_id) ||
+                (s.code && g.code && String(g.code).toUpperCase() === String(s.code).toUpperCase())
+            ) || (initialGuruRows && initialGuruRows[0]) || null;
+
+            if (!state.schoolId && matchedInitialGuru) {
+                state.schoolId = matchedInitialGuru.school_id;
+            }
+
+            if (!state.schoolId) {
+                showToast('ID Sekolah tidak ditemukan pada sesi login.', 'error');
+                return;
+            }
+
+            // 5.2 Ambil Tahun Ajaran Aktif & Semester Aktif terlebih dahulu agar pemilihan record guru akurat
+            const { data: years } = await db
+                .from('academic_years')
+                .select('*')
+                .eq('school_id', state.schoolId)
+                .eq('is_active', true)
+                .limit(1);
+            state.activeYear = years && years.length > 0 ? years[0] : null;
+
+            let semQuery = db
+                .from('semesters')
+                .select('*')
+                .eq('school_id', state.schoolId)
+                .eq('is_active', true);
+            if (state.activeYear) {
+                semQuery = semQuery.eq('academic_year_id', state.activeYear.id);
+            }
+            const { data: sems } = await semQuery.limit(1);
+            state.activeSemester = sems && sems.length > 0 ? sems[0] : null;
+
+            const yearText = state.activeYear ? state.activeYear.name : 'Tahun Ajaran Belum Aktif';
+            const semText = state.activeSemester ? state.activeSemester.name : 'Semester Belum Aktif';
+            document.getElementById('academicPeriodDisplay').textContent = `📅 ${yearText} • Semester ${semText}`;
+
+            // 5.3 Ambil Master Data Paralel: Info Sekolah (cek status is_free), Gurus, Mapels, Rombels, Assignments, Variabel Global
+            let schoolQ = db.from('schools').select('id, name, is_free').eq('id', state.schoolId).limit(1);
+            let rombelQ = db.from('rombels').select('*').eq('school_id', state.schoolId);
+            let mapelQ = db.from('mapels').select('*').eq('school_id', state.schoolId);
+            // Ambil semua teaching_assignments sekolah (filter tahun ajaran & semester secara toleran agar data NULL tetap terbaca)
+            let assignQ = db.from('teaching_assignments').select('*').eq('school_id', state.schoolId);
+            let guruAllQ = db.from('gurus').select('*').eq('school_id', state.schoolId);
+            let varGlobalQ = db.from('variabel_global').select('*').eq('school_id', state.schoolId).limit(1);
+
+            if (state.activeYear) {
+                rombelQ = rombelQ.eq('academic_year_id', state.activeYear.id);
+                mapelQ = mapelQ.eq('academic_year_id', state.activeYear.id);
+            }
+
+            const [
+                { data: schoolData },
+                { data: rombelsData },
+                { data: mapelsData },
+                { data: assignData },
+                { data: gurusData },
+                { data: varGlobalData }
+            ] = await Promise.all([schoolQ, rombelQ, mapelQ, assignQ, guruAllQ, varGlobalQ]);
+
+            // KETERANGAN: Verifikasi status Free / Premium langsung dari tabel `schools` Supabase
+            state.schoolRecord = schoolData && schoolData.length > 0 ? schoolData[0] : null;
+            if (state.schoolRecord && state.schoolRecord.name) {
+                document.getElementById('schoolNameDisplay').textContent = state.schoolRecord.name;
+            }
+            const isSchoolFree = state.schoolRecord
+                ? Boolean(state.schoolRecord.is_free)
+                : Boolean(state.guruSession && state.guruSession.is_free === true);
+            updateTraktirKopiVisibility(isSchoolFree);
+
+            state.allRombels = (rombelsData || []).sort((a, b) =>
+                String(a.tingkat).localeCompare(String(b.tingkat), 'id', { numeric: true }) ||
+                String(a.name).localeCompare(String(b.name), 'id', { numeric: true })
+            );
+            state.allMapels = (mapelsData || []).sort((a, b) => String(a.name).localeCompare(String(b.name), 'id'));
+            state.allGurus = gurusData || [];
+            state.variabelGlobal = varGlobalData && varGlobalData.length > 0 ? varGlobalData[0] : null;
+
+            const activeYearId = state.activeYear ? state.activeYear.id : null;
+            const semId = state.activeSemester ? state.activeSemester.id : null;
+
+            // 5.3.b Identifikasi seluruh record milik guru yang sedang login (memprioritaskan tahun ajaran aktif)
+            const myGuruRecords = state.allGurus.filter(g => {
+                const sameIdentity =
+                    (s.guru_id && g.id === s.guru_id) ||
+                    (s.id && g.id === s.id) ||
+                    (s.user_id && g.user_id && g.user_id === s.user_id) ||
+                    (s.code && g.code && String(g.code).toUpperCase() === String(s.code).toUpperCase());
+                if (!sameIdentity) return false;
+                return !activeYearId || !g.academic_year_id || g.academic_year_id === activeYearId;
+            });
+
+            // Pilih record guru utama (prioritas yang academic_year_id cocok dengan tahun aktif)
+            state.guruRecord =
+                myGuruRecords.find(g => activeYearId && g.academic_year_id === activeYearId) ||
+                myGuruRecords[0] ||
+                matchedInitialGuru || {
+                    id: s.guru_id || s.id || null,
+                    school_id: state.schoolId,
+                    name: s.display_name || s.name || 'Guru',
+                    code: s.code || '-'
+                };
+
+            const myGuruIdSet = new Set(myGuruRecords.map(g => g.id));
+            if (state.guruRecord.id) myGuruIdSet.add(state.guruRecord.id);
+
+            // Update nama lengkap bila ada di database
+            const displayGuruName = state.guruRecord.name || s.display_name || 'Guru';
+            document.getElementById('welcomeMessage').innerHTML =
+                `${getGreetingByTime()}, Bapak/Ibu Guru <span>${escapeHtml(displayGuruName)}</span>`;
+
+            // Simpan info aktif ke sessionStorage agar bisa dibaca halaman Legger & Input Nilai
+            sessionStorage.setItem('nilaiProContext', JSON.stringify({
+                school_id: state.schoolId,
+                school_name: document.getElementById('schoolNameDisplay').textContent,
+                is_free: isSchoolFree,
+                guru_id: state.guruRecord.id,
+                guru_name: displayGuruName,
+                academic_year_id: activeYearId,
+                academic_year_name: yearText,
+                semester_id: semId,
+                semester_name: semText
+            }));
+
+            // 5.3.c SINKRONISASI BEBAN MENGAJAR GURU DARI ADMIN SEKOLAH
+            // Menggabungkan data dari tabel `teaching_assignments` DAN kolom mapping `gurus.mapel_id` + `gurus.rombel_ids`
+            const validRombelIdSet = new Set(state.allRombels.map(r => r.id));
+            const validMapelIdSet = new Set(state.allMapels.map(m => m.id));
+
+            // Filter teaching_assignments sesuai tahun ajaran & semester aktif (toleran terhadap kolom NULL)
+            const filteredDbAssignments = (assignData || []).filter(a => {
+                const matchYear = !activeYearId || !a.academic_year_id || a.academic_year_id === activeYearId;
+                const matchSem = !semId || !a.semester_id || a.semester_id === semId;
+                return matchYear && matchSem && validRombelIdSet.has(a.rombel_id) && validMapelIdSet.has(a.mapel_id);
+            });
+
+            const assignmentKeySet = new Set(
+                filteredDbAssignments.map(a => `${a.guru_id}__${a.mapel_id}__${a.rombel_id}`)
+            );
+            const mergedAssignments = [...filteredDbAssignments];
+            const missingMyAssignmentsToSync = [];
+
+            // Ekstrak beban mengajar yang diset Admin Sekolah pada tabel `gurus` (mapel_id & rombel_ids)
+            state.allGurus.forEach(g => {
+                const matchYear = !activeYearId || !g.academic_year_id || g.academic_year_id === activeYearId;
+                if (!matchYear) return;
+
+                let rIds = [];
+                if (Array.isArray(g.rombel_ids)) {
+                    rIds = g.rombel_ids;
+                } else if (typeof g.rombel_ids === 'string' && g.rombel_ids.trim()) {
+                    try {
+                        const parsed = JSON.parse(g.rombel_ids);
+                        if (Array.isArray(parsed)) rIds = parsed;
+                    } catch (_) { /* abaikan jika bukan JSON valid */ }
+                }
+
+                if (g.mapel_id && validMapelIdSet.has(g.mapel_id) && rIds.length > 0) {
+                    rIds.forEach(rawRombelId => {
+                        const rombelId = typeof rawRombelId === 'object' && rawRombelId !== null ? rawRombelId.id : rawRombelId;
+                        if (!validRombelIdSet.has(rombelId)) return;
+
+                        const key = `${g.id}__${g.mapel_id}__${rombelId}`;
+                        if (!assignmentKeySet.has(key)) {
+                            assignmentKeySet.add(key);
+                            const syncedRow = {
+                                id: null,
+                                school_id: state.schoolId,
+                                guru_id: g.id,
+                                mapel_id: g.mapel_id,
+                                rombel_id: rombelId,
+                                academic_year_id: activeYearId,
+                                semester_id: semId,
+                                is_finalized: false,
+                                _fromGuruMapping: true
+                            };
+                            mergedAssignments.push(syncedRow);
+
+                            // Jika milik guru yang sedang login, tandai untuk sinkronisasi ke teaching_assignments
+                            if (myGuruIdSet.has(g.id)) {
+                                missingMyAssignmentsToSync.push({
+                                    school_id: state.schoolId,
+                                    guru_id: state.guruRecord.id,
+                                    mapel_id: g.mapel_id,
+                                    rombel_id: rombelId,
+                                    academic_year_id: activeYearId,
+                                    semester_id: semId,
+                                    is_finalized: false
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Auto-insert beban mengajar milik guru aktif ke teaching_assignments agar permanen & bisa di-Edit Mapping / Finalisasi
+            if (missingMyAssignmentsToSync.length > 0 && state.guruRecord.id) {
+                const { data: insertedRows, error: syncErr } = await db
+                    .from('teaching_assignments')
+                    .insert(missingMyAssignmentsToSync)
+                    .select('*');
+
+                if (!syncErr && insertedRows && insertedRows.length > 0) {
+                    insertedRows.forEach(ins => {
+                        const idx = mergedAssignments.findIndex(m =>
+                            m._fromGuruMapping &&
+                            myGuruIdSet.has(m.guru_id) &&
+                            m.mapel_id === ins.mapel_id &&
+                            m.rombel_id === ins.rombel_id
+                        );
+                        if (idx !== -1) {
+                            mergedAssignments[idx] = ins;
+                        }
+                    });
+                } else if (syncErr) {
+                    console.warn('Sinkronisasi otomatis ke teaching_assignments dilewati:', syncErr.message);
+                }
+            }
+
+            state.allAssignments = mergedAssignments;
+            state.myAssignments = state.allAssignments.filter(a => myGuruIdSet.has(a.guru_id));
+
+            // Simpan daftar ID guru aktif agar bisa dipakai konsisten di seluruh fitur
+            state.myGuruIds = Array.from(myGuruIdSet);
+
+            // 5.4 Ambil Data CP (Tujuan Pembelajaran) untuk semester aktif
+            // state.allCps menyimpan seluruh CP sekolah pada semester aktif (untuk fitur Ambil TP dari Guru Lain & hitung progres Wali Kelas).
+            // state.myCps HANYA menyimpan CP milik guru yang sedang login (berdasarkan guru_id) agar berdiri sendiri.
+            let cpQ = db.from('cps').select('*').eq('school_id', state.schoolId);
+            if (semId) cpQ = cpQ.eq('semester_id', semId);
+            const { data: cpsData } = await cpQ.order('cp_number', { ascending: true });
+            state.allCps = cpsData || [];
+            state.myCps = state.allCps.filter(cp => cp.guru_id && myGuruIdSet.has(cp.guru_id));
+
+            // 5.5 Identifikasi Wali Kelas
+            state.walasRombel = state.allRombels.find(r => r.wali_kelas_id === state.guruRecord.id) || null;
+
+            // 5.6 Kumpulkan ID Rombel yang relevan (Rombel Wali Kelas + Rombel Mengajar Guru)
+            const relevantRombelIds = new Set();
+            if (state.walasRombel) relevantRombelIds.add(state.walasRombel.id);
+            state.myAssignments.forEach(a => relevantRombelIds.add(a.rombel_id));
+
+            // Ambil Data Siswa & Nilai untuk rombel relevan
+            state.studentsByRombel = {};
+            state.gradesCache = [];
+
+            if (relevantRombelIds.size > 0) {
+                const rombelIdArr = Array.from(relevantRombelIds);
+                let studQ = db.from('students').select('*').eq('school_id', state.schoolId).in('rombel_id', rombelIdArr);
+                if (state.activeYear) studQ = studQ.eq('academic_year_id', state.activeYear.id);
+                const { data: studentsData } = await studQ.order('no_absen', { ascending: true });
+
+                const studentIds = [];
+                (studentsData || []).forEach(st => {
+                    if (!state.studentsByRombel[st.rombel_id]) state.studentsByRombel[st.rombel_id] = [];
+                    state.studentsByRombel[st.rombel_id].push(st);
+                    studentIds.push(st.id);
+                });
+
+                if (studentIds.length > 0) {
+                    let gradeQ = db.from('grades').select('*').eq('school_id', state.schoolId).in('student_id', studentIds);
+                    if (semId) gradeQ = gradeQ.eq('semester_id', semId);
+                    const { data: gradesData } = await gradeQ;
+                    state.gradesCache = gradesData || [];
+                }
+            }
+
+            // Update info ringkas di footer
+            document.getElementById('guruInfoMeta').textContent =
+                `Kode Guru: ${state.guruRecord.code || '-'} • Total Rombel Diampu: ${state.myAssignments.length}`;
+
+            // 5.7 Render Ketiga Panel
+            renderPanel1WaliKelas();
+            renderPanel2TpAndMapping();
+            renderPanel3RekapNilai();
+
+        } catch (err) {
+            console.error('Error memuat Dashboard Guru:', err);
+            showToast('Terjadi kesalahan saat memuat data dashboard.', 'error');
+        }
+    }
+
+    // =========================================================================
+    // 6. RENDER PANEL 1 : WALI KELAS (32%)
+    //    - Prosentase tiap mapel dihitung dari rata-rata prosentase UH, PSTS, PSAS
+    //      (misal: 14% + 33% + 14% = 20.33% -> dibulatkan menjadi 20%)
+    //    - Judul "Progres Input Nilai Semua Mapel (XX%)" menampilkan rata-rata
+    //      prosentase dari seluruh mapel di rombel yang diwalikelasi
+    //    - Klik header kolom (Mapel, Guru Mapel, Prosentase, Status) untuk sort
+    // =========================================================================
+    function getCpsForWalasMapel(mapelId, tingkat, guruId, relevantGrades) {
+        const allForMapelTingkat = (state.allCps || []).filter(
+            cp => cp.mapel_id === mapelId && String(cp.tingkat) === String(tingkat)
+        );
+        if (allForMapelTingkat.length === 0) return [];
+
+        // 1. Prioritaskan CP milik guru pengampu mapel di kelas tersebut
+        if (guruId) {
+            const byGuru = allForMapelTingkat.filter(cp => cp.guru_id === guruId);
+            if (byGuru.length > 0) return byGuru;
+        }
+
+        // 2. Fallback CP lama yang belum memiliki guru_id
+        const legacyNoGuru = allForMapelTingkat.filter(cp => !cp.guru_id);
+        if (legacyNoGuru.length > 0) return legacyNoGuru;
+
+        // 3. Fallback berdasarkan cp_id yang tercatat di nilai siswa rombel ini
+        const gradeCpIds = new Set((relevantGrades || []).map(g => g.cp_id).filter(Boolean));
+        if (gradeCpIds.size > 0) {
+            const matchedFromGrades = allForMapelTingkat.filter(cp => gradeCpIds.has(cp.id));
+            if (matchedFromGrades.length > 0) return matchedFromGrades;
+        }
+
+        return [];
+    }
+
+    function renderPanel1WaliKelas() {
+        const statusTextEl = document.getElementById('walasStatusText');
+        const btnPilih = document.getElementById('btnPilihKelas');
+        const btnUbahTop = document.getElementById('btnUbahWalasTop');
+        const progressSec = document.getElementById('walasProgressSection');
+        const nonWalasInfo = document.getElementById('nonWalasInfo');
+        const btnLegger = document.getElementById('btnLihatLegger');
+        const tbody = document.getElementById('walasProgressTbody');
+        const headingTitleEl = document.getElementById('walasProgressHeadingTitle');
+
+        const nonWalasFlagKey = `nonWalas_${state.guruRecord.id}_${state.activeYear ? state.activeYear.id : 'default'}`;
+        const isExplicitNonWalas = localStorage.getItem(nonWalasFlagKey) === 'true';
+
+        if (state.walasRombel) {
+            // Guru adalah Wali Kelas
+            statusTextEl.innerHTML = `Wali Kelas : <strong>${escapeHtml(state.walasRombel.name)}</strong>`;
+            btnPilih.style.display = 'none';
+            btnUbahTop.style.display = 'inline-flex';
+            progressSec.style.display = 'flex';
+            nonWalasInfo.style.display = 'none';
+            btnLegger.disabled = false;
+
+            // Cari mapel yang di-mapping khusus untuk kelas ini
+            const rombelId = state.walasRombel.id;
+            const tingkat = String(state.walasRombel.tingkat);
+            const assignmentsInClass = state.allAssignments.filter(a => a.rombel_id === rombelId);
+
+            // Gabungkan dengan mapels.rombel_ids bila ada mapel yang belum masuk teaching_assignments
+            const mappedMapelMap = new Map();
+            assignmentsInClass.forEach(a => {
+                mappedMapelMap.set(a.mapel_id, a);
+            });
+            state.allMapels.forEach(m => {
+                const rIds = Array.isArray(m.rombel_ids) ? m.rombel_ids : [];
+                if (rIds.includes(rombelId) && !mappedMapelMap.has(m.id)) {
+                    mappedMapelMap.set(m.id, { mapel_id: m.id, guru_id: null, is_finalized: false });
+                }
+            });
+
+            const classMapelList = Array.from(mappedMapelMap.values());
+            document.getElementById('walasMapelCountBadge').textContent = `${classMapelList.length} Mapel`;
+
+            if (classMapelList.length === 0) {
+                state.walasRowsData = [];
+                if (headingTitleEl) {
+                    headingTitleEl.textContent = 'Progres Input Nilai Semua Mapel (0%)';
+                }
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Belum ada mata pelajaran yang di-mapping ke kelas ini.</td></tr>`;
+                return;
+            }
+
+            const students = state.studentsByRombel[rombelId] || [];
+            const totalStudents = students.length;
+            const studentIdSet = new Set(students.map(s => s.id));
+
+            // Susun data progres setiap mapel berdasarkan rata-rata prosentase UH, PSTS, dan PSAS
+            state.walasRowsData = classMapelList.map(item => {
+                const mapelObj = state.allMapels.find(m => m.id === item.mapel_id);
+                const guruObj = state.allGurus.find(g => g.id === item.guru_id);
+                const mapelName = mapelObj ? mapelObj.name : 'Mapel Tidak Dikenal';
+                const hasGuru = Boolean(guruObj && guruObj.name);
+                const guruName = hasGuru ? guruObj.name : 'Belum ditentukan';
+
+                const relevantGrades = state.gradesCache.filter(g =>
+                    g.mapel_id === item.mapel_id && studentIdSet.has(g.student_id) && g.score !== null && g.score !== ''
+                );
+
+                // 1. Prosentase UH
+                const cpList = getCpsForWalasMapel(item.mapel_id, tingkat, item.guru_id, relevantGrades);
+                const cpIdSet = new Set(cpList.map(c => c.id));
+                let uhFilled = 0;
+                let uhTotal = 0;
+
+                if (totalStudents > 0) {
+                    if (cpList.length > 0) {
+                        uhTotal = totalStudents * cpList.length;
+                        const filledUhSlots = new Set();
+                        relevantGrades.forEach(g => {
+                            if (g.cp_id && cpIdSet.has(g.cp_id)) {
+                                filledUhSlots.add(`${g.student_id}__${g.cp_id}`);
+                            }
+                        });
+                        uhFilled = filledUhSlots.size;
+                    } else {
+                        uhTotal = totalStudents;
+                        const filledUhStudents = new Set(
+                            relevantGrades
+                                .filter(g => String(g.grade_type || '').toUpperCase().startsWith('UH'))
+                                .map(g => g.student_id)
+                        );
+                        uhFilled = filledUhStudents.size;
+                    }
+                }
+                const pctUh = calcComponentPct(uhFilled, uhTotal);
+
+                // 2. Prosentase PSTS
+                const filledPstsStudents = new Set(
+                    relevantGrades
+                        .filter(g => ['PSTS', 'PTS', 'STS'].includes(String(g.grade_type || '').toUpperCase()))
+                        .map(g => g.student_id)
+                );
+                const pctPsts = calcComponentPct(filledPstsStudents.size, totalStudents);
+
+                // 3. Prosentase PSAS
+                const filledPsasStudents = new Set(
+                    relevantGrades
+                        .filter(g => ['PSAS', 'PAS', 'SAS'].includes(String(g.grade_type || '').toUpperCase()))
+                        .map(g => g.student_id)
+                );
+                const pctPsas = calcComponentPct(filledPsasStudents.size, totalStudents);
+
+                // 4. Rata-rata Prosentase UH, PSTS, dan PSAS (dibulatkan ke bilangan bulat terdekat)
+                const rawAvgPct = (pctUh + pctPsts + pctPsas) / 3;
+                const pct = Math.round(rawAvgPct);
+
+                // 5. Status & Rank untuk Sorting
+                const isFinalized = Boolean(item.is_finalized);
+                let statusLabel = 'Belum Input';
+                let statusRank = 1;
+                let statusBadge = '<span class="badge badge-neutral">Belum Input</span>';
+
+                if (isFinalized) {
+                    statusLabel = 'Finalisasi';
+                    statusRank = 3;
+                    statusBadge = '<span class="badge badge-success">Finalisasi</span>';
+                } else if (pct > 0 || pctUh > 0 || pctPsts > 0 || pctPsas > 0) {
+                    statusLabel = 'Proses';
+                    statusRank = 2;
+                    statusBadge = '<span class="badge badge-warning">Proses</span>';
+                }
+
+                return {
+                    mapelId: item.mapel_id,
+                    mapelName,
+                    hasGuru,
+                    guruName,
+                    pctUh,
+                    pctPsts,
+                    pctPsas,
+                    rawAvgPct,
+                    pct,
+                    isFinalized,
+                    statusLabel,
+                    statusRank,
+                    statusBadge
+                };
+            });
+
+            // Hitung rata-rata prosentase semua mapel di rombel ini untuk judul section
+            const totalAllMapelsPct = state.walasRowsData.reduce((sum, r) => sum + r.pct, 0);
+            const avgAllMapelsPct = state.walasRowsData.length > 0
+                ? Math.round(totalAllMapelsPct / state.walasRowsData.length)
+                : 0;
+
+            if (headingTitleEl) {
+                headingTitleEl.textContent = `Progres Input Nilai Semua Mapel (${avgAllMapelsPct}%)`;
+            }
+
+            // Render isi tabel sesuai konfigurasi sort aktif
+            renderWalasProgressTable();
+
+        } else if (isExplicitNonWalas) {
+            state.walasRowsData = [];
+            statusTextEl.innerHTML = `Status : <strong>Bukan Wali Kelas</strong>`;
+            btnPilih.style.display = 'none';
+            btnUbahTop.style.display = 'inline-flex';
+            progressSec.style.display = 'none';
+            nonWalasInfo.style.display = 'block';
+            btnLegger.disabled = true;
+        } else {
+            state.walasRowsData = [];
+            statusTextEl.innerHTML = `Wali kelas kelas : <span class="text-muted">Belum dipilih</span>`;
+            btnPilih.style.display = 'inline-flex';
+            btnUbahTop.style.display = 'none';
+            progressSec.style.display = 'none';
+            nonWalasInfo.style.display = 'none';
+            btnLegger.disabled = true;
+        }
+    }
+
+    // Handler klik header kolom tabel Wali Kelas untuk mengurutkan otomatis
+    function toggleWalasSort(column) {
+        if (!['mapel', 'guru', 'prosentase', 'status'].includes(column)) return;
+
+        if (state.walasSort.column === column) {
+            state.walasSort.direction = state.walasSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            state.walasSort.column = column;
+            // Default 'desc' untuk Prosentase & Status agar progres tertinggi tampil di atas, 'asc' untuk Mapel & Guru
+            state.walasSort.direction = (column === 'prosentase' || column === 'status') ? 'desc' : 'asc';
+        }
+
+        renderWalasProgressTable();
+    }
+
+    // Render baris tabel Wali Kelas berdasarkan state.walasRowsData dan state.walasSort
+    function renderWalasProgressTable() {
+        const tbody = document.getElementById('walasProgressTbody');
+        if (!tbody) return;
+
+        const { column, direction } = state.walasSort;
+        const dir = direction === 'asc' ? 1 : -1;
+
+        // Perbarui tampilan indikator sort pada header kolom
+        const sortableCols = ['mapel', 'guru', 'prosentase', 'status'];
+        sortableCols.forEach(col => {
+            const th = document.querySelector(`#panelWaliKelas th[data-sort-col="${col}"]`);
+            const icon = document.getElementById(`sortIcon_${col}`);
+            if (th) {
+                th.classList.toggle('sort-active', col === column);
+            }
+            if (icon) {
+                if (col === column) {
+                    icon.textContent = direction === 'asc' ? '▲' : '▼';
+                } else {
+                    icon.textContent = '⇅';
+                }
+            }
+        });
+
+        if (!state.walasRowsData || state.walasRowsData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Belum ada mata pelajaran yang di-mapping ke kelas ini.</td></tr>`;
+            return;
+        }
+
+        const sortedRows = [...state.walasRowsData].sort((a, b) => {
+            if (column === 'mapel') {
+                return a.mapelName.localeCompare(b.mapelName, 'id', { sensitivity: 'base' }) * dir;
+            }
+            if (column === 'guru') {
+                // Tempatkan "Belum ditentukan" di urutan paling bawah agar daftar nama guru tetap rapi
+                if (!a.hasGuru && !b.hasGuru) {
+                    return a.mapelName.localeCompare(b.mapelName, 'id', { sensitivity: 'base' });
+                }
+                if (!a.hasGuru) return 1;
+                if (!b.hasGuru) return -1;
+                const cmpGuru = a.guruName.localeCompare(b.guruName, 'id', { sensitivity: 'base' }) * dir;
+                return cmpGuru !== 0
+                    ? cmpGuru
+                    : a.mapelName.localeCompare(b.mapelName, 'id', { sensitivity: 'base' });
+            }
+            if (column === 'prosentase') {
+                const cmpPct = (a.pct - b.pct) * dir;
+                if (cmpPct !== 0) return cmpPct;
+                const cmpRaw = (a.rawAvgPct - b.rawAvgPct) * dir;
+                if (cmpRaw !== 0) return cmpRaw;
+                return a.mapelName.localeCompare(b.mapelName, 'id', { sensitivity: 'base' });
+            }
+            if (column === 'status') {
+                const cmpStatus = (a.statusRank - b.statusRank) * dir;
+                if (cmpStatus !== 0) return cmpStatus;
+                const cmpPct = (a.pct - b.pct) * dir;
+                if (cmpPct !== 0) return cmpPct;
+                return a.mapelName.localeCompare(b.mapelName, 'id', { sensitivity: 'base' });
+            }
+            return 0;
+        });
+
+        tbody.innerHTML = sortedRows.map((row, idx) => {
+            const guruHtml = row.hasGuru
+                ? escapeHtml(row.guruName)
+                : '<span class="text-muted">Belum ditentukan</span>';
+            const breakdownTitle = `UH: ${row.pctUh}% • PSTS: ${row.pctPsts}% • PSAS: ${row.pctPsas}% (Rata-rata: ${row.rawAvgPct.toFixed(2)}%)`;
+
+            return `
+                <tr>
+                    <td class="text-center">${idx + 1}</td>
+                    <td><strong>${escapeHtml(row.mapelName)}</strong></td>
+                    <td>${guruHtml}</td>
+                    <td class="text-center" title="${escapeHtml(breakdownTitle)}"><strong>${row.pct}%</strong></td>
+                    <td class="text-center">${row.statusBadge}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Popup Pilih Kelas Wali Kelas (Anti-Double)
+    function openWalasModal() {
+        const container = document.getElementById('walasChoiceList');
+        const currentWalasId = state.walasRombel ? state.walasRombel.id : 'NONE';
+
+        let html = `
+            <label class="choice-item">
+                <div class="choice-left">
+                    <input type="radio" name="walasRombelChoice" value="NONE" ${currentWalasId === 'NONE' ? 'checked' : ''}>
+                    <span>🚫 Bukan Wali Kelas</span>
+                </div>
+                <span class="badge badge-neutral">Guru Mapel Saja</span>
+            </label>
+        `;
+
+        if (state.allRombels.length === 0) {
+            html += `<div class="empty-state">Belum ada data rombel di tahun ajaran aktif.</div>`;
+        } else {
+            state.allRombels.forEach(rombel => {
+                const takenByOther = rombel.wali_kelas_id && rombel.wali_kelas_id !== state.guruRecord.id;
+                const otherGuru = takenByOther ? state.allGurus.find(g => g.id === rombel.wali_kelas_id) : null;
+                const isSelected = rombel.id === currentWalasId;
+
+                html += `
+                    <label class="choice-item ${takenByOther ? 'disabled' : ''}">
+                        <div class="choice-left">
+                            <input type="radio" name="walasRombelChoice" value="${rombel.id}"
+                                ${isSelected ? 'checked' : ''}
+                                ${takenByOther ? 'disabled' : ''}>
+                            <span>Kelas ${escapeHtml(rombel.name)} <small class="text-muted">(Tingkat ${escapeHtml(rombel.tingkat)})</small></span>
+                        </div>
+                        ${takenByOther
+                            ? `<span class="badge badge-danger">Sudah dipilih: ${escapeHtml(otherGuru ? otherGuru.name : 'Guru Lain')}</span>`
+                            : (isSelected ? `<span class="badge badge-success">Kelas Anda</span>` : `<span class="badge badge-neutral">Tersedia</span>`)
+                        }
+                    </label>
+                `;
+            });
+        }
+
+        container.innerHTML = html;
+        openModal('modalWalas');
+    }
+
+    async function saveWalasSelection() {
+        const selectedInput = document.querySelector('input[name="walasRombelChoice"]:checked');
+        if (!selectedInput) {
+            showToast('Silakan pilih salah satu opsi terlebih dahulu.', 'error');
+            return;
+        }
+
+        const chosenValue = selectedInput.value;
+        const btn = document.getElementById('btnSaveWalas');
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+
+        try {
+            const nonWalasFlagKey = `nonWalas_${state.guruRecord.id}_${state.activeYear ? state.activeYear.id : 'default'}`;
+
+            // Lepaskan status wali kelas sebelumnya jika guru pindah kelas / menjadi bukan wali kelas
+            if (state.walasRombel && state.walasRombel.id !== chosenValue) {
+                const { error: clearErr } = await db
+                    .from('rombels')
+                    .update({ wali_kelas_id: null })
+                    .eq('id', state.walasRombel.id);
+                if (clearErr) throw clearErr;
+            }
+
+            if (chosenValue === 'NONE') {
+                localStorage.setItem(nonWalasFlagKey, 'true');
+                showToast('Status berhasil diatur sebagai Bukan Wali Kelas.', 'success');
+            } else {
+                // Validasi ulang di database (mencegah race condition wali kelas ganda)
+                const { data: checkRow, error: checkErr } = await db
+                    .from('rombels')
+                    .select('id, name, wali_kelas_id')
+                    .eq('id', chosenValue)
+                    .single();
+                if (checkErr) throw checkErr;
+
+                if (checkRow.wali_kelas_id && checkRow.wali_kelas_id !== state.guruRecord.id) {
+                    showToast(`Kelas ${checkRow.name} baru saja dipilih oleh guru lain!`, 'error');
+                    await loadDashboardData();
+                    openWalasModal();
+                    return;
+                }
+
+                const { error: updErr } = await db
+                    .from('rombels')
+                    .update({ wali_kelas_id: state.guruRecord.id })
+                    .eq('id', chosenValue);
+                if (updErr) throw updErr;
+
+                localStorage.removeItem(nonWalasFlagKey);
+                showToast(`Anda berhasil ditetapkan sebagai Wali Kelas ${checkRow.name}.`, 'success');
+            }
+
+            closeModal('modalWalas');
+            await loadDashboardData();
+        } catch (err) {
+            console.error('Gagal menyimpan pilihan wali kelas:', err);
+            showToast('Gagal menyimpan pilihan wali kelas: ' + (err.message || 'Error'), 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Pilihan';
+        }
+    }
+
+    function goToLeggerPage() {
+        if (!state.walasRombel) {
+            showToast('Fitur Legger hanya tersedia untuk Wali Kelas.', 'error');
+            return;
+        }
+        window.location.href = `legger_kelas.html?rombel_id=${encodeURIComponent(state.walasRombel.id)}`;
+    }
+
+    // =========================================================================
+    // 7. RENDER PANEL 2 : INPUT TP & MAPPING MAPEL (31%)
+    // =========================================================================
+    function getMyMapelTingkatPairs() {
+        // Mengembalikan daftar unik { mapel_id, mapel_name, tingkat } yang diampu guru
+        const pairMap = new Map();
+        state.myAssignments.forEach(a => {
+            const rombel = state.allRombels.find(r => r.id === a.rombel_id);
+            const mapel = state.allMapels.find(m => m.id === a.mapel_id);
+            if (!rombel || !mapel) return;
+            const key = `${mapel.id}__${rombel.tingkat}`;
+            if (!pairMap.has(key)) {
+                pairMap.set(key, {
+                    key,
+                    mapel_id: mapel.id,
+                    mapel_name: mapel.name,
+                    tingkat: String(rombel.tingkat)
+                });
+            }
+        });
+
+        return Array.from(pairMap.values()).sort((a, b) =>
+            a.mapel_name.localeCompare(b.mapel_name, 'id') ||
+            a.tingkat.localeCompare(b.tingkat, 'id', { numeric: true })
+        );
+    }
+
+    function renderPanel2TpAndMapping() {
+        const tpTbody = document.getElementById('tpSummaryTbody');
+        const mappingContainer = document.getElementById('mappingMapelContainer');
+        const pairs = getMyMapelTingkatPairs();
+
+        // 7.1 Render Tabel Tujuan Pembelajaran (Per Mapel Per Tingkat)
+        if (pairs.length === 0) {
+            tpTbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">Belum ada mapel yang diampu. Klik <strong>+ Tambah Mapel</strong> di kanan atas.</td></tr>`;
+        } else {
+            tpTbody.innerHTML = pairs.map((p, idx) => {
+                const countTp = state.myCps.filter(cp =>
+                    cp.mapel_id === p.mapel_id && String(cp.tingkat) === String(p.tingkat)
+                ).length;
+
+                const jumlahTpHtml = countTp === 0
+                    ? `<span class="badge badge-warning">Belum ada TP</span>`
+                    : `<span class="badge badge-success">${countTp} TP</span>`;
+
+                return `
+                    <tr>
+                        <td class="text-center">${idx + 1}</td>
+                        <td><strong>${escapeHtml(p.mapel_name)}</strong></td>
+                        <td class="text-center">Tingkat ${escapeHtml(p.tingkat)}</td>
+                        <td class="text-center">${jumlahTpHtml}</td>
+                        <td class="text-center">
+                            <button type="button" class="btn-sm" onclick="openEditTpModal('${p.key}')">Edit TP</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 7.2 Render Daftar Mata Pelajaran yang Diampu (Dikelompokkan per Mapel -> Tingkat -> Rombel)
+        if (state.myAssignments.length === 0) {
+            mappingContainer.innerHTML = `<div class="empty-state">Belum ada mapping mata pelajaran & rombel untuk Anda.</div>`;
+            return;
+        }
+
+        const mapelGroups = new Map();
+        state.myAssignments.forEach(a => {
+            const mapel = state.allMapels.find(m => m.id === a.mapel_id);
+            const rombel = state.allRombels.find(r => r.id === a.rombel_id);
+            if (!mapel || !rombel) return;
+
+            if (!mapelGroups.has(mapel.id)) {
+                mapelGroups.set(mapel.id, { mapel, byTingkat: new Map() });
+            }
+            const g = mapelGroups.get(mapel.id);
+            const tKey = String(rombel.tingkat);
+            if (!g.byTingkat.has(tKey)) g.byTingkat.set(tKey, []);
+            g.byTingkat.get(tKey).push(rombel.name);
+        });
+
+        const sortedGroups = Array.from(mapelGroups.values()).sort((a, b) =>
+            a.mapel.name.localeCompare(b.mapel.name, 'id')
+        );
+
+        mappingContainer.innerHTML = sortedGroups.map(group => {
+            const tingkatKeys = Array.from(group.byTingkat.keys()).sort((a, b) =>
+                a.localeCompare(b, 'id', { numeric: true })
+            );
+            const linesHtml = tingkatKeys.map(tk => {
+                const rombelNames = group.byTingkat.get(tk).sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+                return `<div class="mapping-tingkat-line"><strong>Tingkat ${escapeHtml(tk)} :</strong> ${escapeHtml(rombelNames.join(', '))}</div>`;
+            }).join('');
+
+            return `
+                <div class="mapping-item">
+                    <div class="mapping-item-header">
+                        <span class="mapping-mapel-name">${escapeHtml(group.mapel.name)} :</span>
+                        <button type="button" class="btn-outline btn-sm" onclick="openEditMappingModal('${group.mapel.id}')">
+                            Edit Mapping
+                        </button>
+                    </div>
+                    ${linesHtml}
+                </div>
+            `;
+        }).join('');
+    }
+
+    // -------------------------------------------------------------------------
+    // POPUP KELOLA TUJUAN PEMBELAJARAN (MAKS 10 CP, 10 - 100 KARAKTER)
+    // -------------------------------------------------------------------------
+    function openEditTpModal(selectedPairKey) {
+        const pairs = getMyMapelTingkatPairs();
+        if (pairs.length === 0) {
+            showToast('Tambahkan mata pelajaran terlebih dahulu.', 'error');
+            return;
+        }
+
+        const selectEl = document.getElementById('tpMapelTingkatSelect');
+        selectEl.innerHTML = pairs.map(p =>
+            `<option value="${p.key}" ${p.key === selectedPairKey ? 'selected' : ''}>
+                ${escapeHtml(p.mapel_name)} — Tingkat ${escapeHtml(p.tingkat)}
+            </option>`
+        ).join('');
+
+        renderTpEditorRows();
+        openModal('modalEditTp');
+    }
+
+    function renderTpEditorRows() {
+        const pairKey = document.getElementById('tpMapelTingkatSelect').value;
+        const [mapelId, tingkat] = pairKey.split('__');
+
+        const existingCps = state.myCps
+            .filter(cp => cp.mapel_id === mapelId && String(cp.tingkat) === String(tingkat))
+            .sort((a, b) => (a.cp_number || 0) - (b.cp_number || 0));
+
+        state.tpDraftRows = existingCps.map(cp => ({
+            id: cp.id,
+            description: cp.description || ''
+        }));
+
+        if (state.tpDraftRows.length === 0) {
+            state.tpDraftRows.push({ id: null, description: '' });
+        }
+
+        updateAmbilTpButtonState(mapelId, tingkat);
+        drawTpDraftList();
+    }
+
+    // -------------------------------------------------------------------------
+    // FITUR AMBIL TP DARI GURU LAIN (TINGKAT & MAPEL SAMA, TETAP BERDIRI SENDIRI)
+    // -------------------------------------------------------------------------
+    function getOtherGurusWithTp(mapelId, tingkat) {
+        const myIdSet = new Set(state.myGuruIds || []);
+        if (state.guruRecord && state.guruRecord.id) {
+            myIdSet.add(state.guruRecord.id);
+        }
+
+        // Kumpulkan TP milik guru lain dengan mapel_id dan tingkat yang sama
+        const groupedByGuru = new Map();
+        (state.allCps || []).forEach(cp => {
+            if (!cp.guru_id || myIdSet.has(cp.guru_id)) return;
+            if (cp.mapel_id !== mapelId || String(cp.tingkat) !== String(tingkat)) return;
+
+            if (!groupedByGuru.has(cp.guru_id)) {
+                const guruObj = state.allGurus.find(g => g.id === cp.guru_id);
+                groupedByGuru.set(cp.guru_id, {
+                    guru_id: cp.guru_id,
+                    guru_name: guruObj ? guruObj.name : 'Guru Lain',
+                    guru_code: guruObj ? (guruObj.code || '-') : '-',
+                    cps: []
+                });
+            }
+            groupedByGuru.get(cp.guru_id).cps.push(cp);
+        });
+
+        // Urutkan TP per guru berdasarkan cp_number, lalu urutkan daftar guru berdasarkan nama
+        const result = Array.from(groupedByGuru.values())
+            .filter(item => item.cps.length > 0)
+            .map(item => ({
+                ...item,
+                cps: item.cps.sort((a, b) => (a.cp_number || 0) - (b.cp_number || 0))
+            }))
+            .sort((a, b) => String(a.guru_name).localeCompare(String(b.guru_name), 'id'));
+
+        return result;
+    }
+
+    function updateAmbilTpButtonState(mapelId, tingkat) {
+        const btn = document.getElementById('btnAmbilTpGuruLain');
+        if (!btn) return;
+
+        const otherGurus = getOtherGurusWithTp(mapelId, tingkat);
+        if (otherGurus.length === 0) {
+            btn.disabled = true;
+            btn.textContent = '📥 Ambil TP Guru Lain (Belum ada)';
+            btn.title = 'Belum ada guru lain yang menginput TP untuk mapel dan tingkat ini';
+        } else {
+            btn.disabled = false;
+            btn.textContent = `📥 Ambil TP Guru Lain (${otherGurus.length} Guru)`;
+            btn.title = `Tersedia TP dari ${otherGurus.length} guru lain pada mapel dan tingkat yang sama`;
+        }
+    }
+
+    function getCurrentNonEmptyTpCount() {
+        return state.tpDraftRows.filter(r => (r.description || '').trim().length > 0).length;
+    }
+
+    function openAmbilTpGuruLainModal() {
+        const pairKey = document.getElementById('tpMapelTingkatSelect').value;
+        const [mapelId, tingkat] = pairKey.split('__');
+        const otherGurus = getOtherGurusWithTp(mapelId, tingkat);
+
+        if (otherGurus.length === 0) {
+            updateAmbilTpButtonState(mapelId, tingkat);
+            showToast('Belum ada guru lain yang menginput TP untuk mapel dan tingkat ini.', 'info');
+            return;
+        }
+
+        const mapelObj = state.allMapels.find(m => m.id === mapelId);
+        const mapelName = mapelObj ? mapelObj.name : 'Mata Pelajaran';
+        document.getElementById('ambilTpSubtitle').textContent = `${mapelName} — Tingkat ${tingkat}`;
+
+        state.importTpState = {
+            mapelId,
+            tingkat,
+            otherGurus,
+            selectedGuruId: otherGurus[0].guru_id
+        };
+
+        renderImportGuruList();
+        renderImportTpChecklist();
+        openModal('modalAmbilTpGuruLain');
+    }
+
+    function selectImportSourceGuru(guruId) {
+        state.importTpState.selectedGuruId = guruId;
+        renderImportGuruList();
+        renderImportTpChecklist();
+    }
+
+    function renderImportGuruList() {
+        const container = document.getElementById('importGuruListContainer');
+        const { otherGurus, selectedGuruId } = state.importTpState;
+
+        if (!otherGurus || otherGurus.length === 0) {
+            container.innerHTML = `<div class="empty-state">Tidak ada guru lain yang memiliki TP pada mapel dan tingkat ini.</div>`;
+            return;
+        }
+
+        container.innerHTML = otherGurus.map(g => {
+            const isActive = g.guru_id === selectedGuruId;
+            return `
+                <label class="import-guru-card ${isActive ? 'active' : ''}" onclick="selectImportSourceGuru('${g.guru_id}')">
+                    <div class="import-guru-left">
+                        <input type="radio" name="importSourceGuru" value="${g.guru_id}" ${isActive ? 'checked' : ''} onchange="selectImportSourceGuru('${g.guru_id}')">
+                        <div>
+                            <div class="import-guru-name">${escapeHtml(g.guru_name)}</div>
+                            <div class="import-guru-meta">Kode Guru: ${escapeHtml(g.guru_code)}</div>
+                        </div>
+                    </div>
+                    <span class="badge badge-success">${g.cps.length} TP</span>
+                </label>
+            `;
+        }).join('');
+    }
+
+    function renderImportTpChecklist() {
+        const container = document.getElementById('importTpChecklistContainer');
+        const selectAllChk = document.getElementById('chkSelectAllImportTp');
+        const { otherGurus, selectedGuruId } = state.importTpState;
+
+        const selectedGuru = otherGurus.find(g => g.guru_id === selectedGuruId);
+        if (!selectedGuru || selectedGuru.cps.length === 0) {
+            container.innerHTML = `<div class="empty-state">Guru terpilih belum memiliki daftar TP.</div>`;
+            if (selectAllChk) {
+                selectAllChk.checked = false;
+                selectAllChk.indeterminate = false;
+            }
+            updateImportSelectionSummary();
+            return;
+        }
+
+        // Deteksi TP yang teksnya sudah ada di daftar draft guru saat ini (hanya penanda informatif)
+        const existingDescSet = new Set(
+            state.tpDraftRows
+                .map(r => (r.description || '').trim().toLowerCase())
+                .filter(Boolean)
+        );
+
+        container.innerHTML = selectedGuru.cps.map((cp, idx) => {
+            const desc = cp.description || '';
+            const alreadyExists = existingDescSet.has(desc.trim().toLowerCase());
+            return `
+                <label class="import-tp-item">
+                    <input type="checkbox" name="importTpCheckbox" value="${idx}" onchange="updateImportSelectionSummary()">
+                    <div class="import-tp-content">
+                        <div class="import-tp-head">
+                            <span class="import-tp-num">TP ke-${cp.cp_number || (idx + 1)}</span>
+                            ${alreadyExists ? '<span class="badge badge-warning">Teks serupa sudah ada</span>' : ''}
+                        </div>
+                        <div class="import-tp-desc">${escapeHtml(desc)}</div>
+                    </div>
+                </label>
+            `;
+        }).join('');
+
+        if (selectAllChk) {
+            selectAllChk.checked = false;
+            selectAllChk.indeterminate = false;
+        }
+        updateImportSelectionSummary();
+    }
+
+    function toggleSelectAllImportTp(isChecked) {
+        const checkboxes = document.querySelectorAll('input[name="importTpCheckbox"]');
+        checkboxes.forEach(cb => {
+            cb.checked = isChecked;
+        });
+        updateImportSelectionSummary();
+    }
+
+    function updateImportSelectionSummary() {
+        const checkboxes = Array.from(document.querySelectorAll('input[name="importTpCheckbox"]'));
+        const checkedCount = checkboxes.filter(cb => cb.checked).length;
+        const totalCount = checkboxes.length;
+
+        const selectAllChk = document.getElementById('chkSelectAllImportTp');
+        if (selectAllChk) {
+            selectAllChk.checked = totalCount > 0 && checkedCount === totalCount;
+            selectAllChk.indeterminate = checkedCount > 0 && checkedCount < totalCount;
+        }
+
+        const sisaSlot = Math.max(0, 10 - getCurrentNonEmptyTpCount());
+        const isOverLimit = checkedCount > sisaSlot;
+
+        const countBadge = document.getElementById('importSelectedCountBadge');
+        const slotBadge = document.getElementById('importSlotInfoBadge');
+        const btnConfirm = document.getElementById('btnConfirmAmbilTp');
+
+        if (countBadge) {
+            countBadge.textContent = `${checkedCount} dipilih`;
+            countBadge.className = 'badge ' + (isOverLimit ? 'badge-danger' : (checkedCount > 0 ? 'badge-success' : 'badge-neutral'));
+        }
+
+        if (slotBadge) {
+            slotBadge.textContent = isOverLimit
+                ? `Melebihi batas! Sisa slot: ${sisaSlot} TP`
+                : `Sisa slot: ${sisaSlot} TP`;
+            slotBadge.className = 'badge ' + (isOverLimit || sisaSlot === 0 ? 'badge-danger' : 'badge-success');
+        }
+
+        if (btnConfirm) {
+            btnConfirm.disabled = checkedCount === 0 || isOverLimit;
+        }
+    }
+
+    function confirmAmbilTpDariGuruLain() {
+        const { otherGurus, selectedGuruId } = state.importTpState;
+        const selectedGuru = otherGurus.find(g => g.guru_id === selectedGuruId);
+        if (!selectedGuru) return;
+
+        const checkedIndices = Array.from(document.querySelectorAll('input[name="importTpCheckbox"]:checked'))
+            .map(cb => parseInt(cb.value, 10))
+            .filter(idx => !isNaN(idx) && selectedGuru.cps[idx]);
+
+        if (checkedIndices.length === 0) {
+            showToast('Pilih minimal 1 TP yang ingin diambil.', 'error');
+            return;
+        }
+
+        // Bersihkan baris kosong bawaan sebelum menambahkan TP hasil salinan
+        const nonEmptyDrafts = state.tpDraftRows.filter(r => (r.description || '').trim().length > 0);
+        const sisaSlot = Math.max(0, 10 - nonEmptyDrafts.length);
+
+        if (checkedIndices.length > sisaSlot) {
+            showToast(`Maksimal 10 TP per tingkat! Anda hanya bisa mengambil maksimal ${sisaSlot} TP lagi.`, 'error');
+            return;
+        }
+
+        // Salin sebagai data baru (id: null) agar 100% berdiri sendiri milik guru yang sedang login
+        const copiedRows = checkedIndices.map(idx => ({
+            id: null,
+            description: selectedGuru.cps[idx].description || ''
+        }));
+
+        state.tpDraftRows = [...nonEmptyDrafts, ...copiedRows];
+        drawTpDraftList();
+        closeModal('modalAmbilTpGuruLain');
+        showToast(
+            `Berhasil mengambil ${copiedRows.length} TP dari ${selectedGuru.guru_name}. Klik "Simpan Tujuan Pembelajaran" untuk menyimpan.`,
+            'success'
+        );
+    }
+
+    function drawTpDraftList() {
+        const container = document.getElementById('tpEditorContainer');
+        const btnAdd = document.getElementById('btnTambahBarisTp');
+
+        btnAdd.disabled = state.tpDraftRows.length >= 10;
+        btnAdd.textContent = state.tpDraftRows.length >= 10 ? 'Maksimal 10 TP Tercapai' : '+ Tambah TP';
+
+        if (state.tpDraftRows.length === 0) {
+            container.innerHTML = `<div class="empty-state">Belum ada TP. Klik <strong>+ Tambah TP</strong> untuk menambah.</div>`;
+            return;
+        }
+
+        container.innerHTML = state.tpDraftRows.map((row, idx) => {
+            const len = (row.description || '').length;
+            const isValid = len >= 10 && len <= 100;
+            return `
+                <div class="tp-row-card">
+                    <div class="tp-row-top">
+                        <span>TP / CP ke-${idx + 1}</span>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span id="tpCounter_${idx}" class="char-counter ${isValid ? 'valid' : 'invalid'}">
+                                ${len} / 100 karakter ${isValid ? '✓' : '(Min. 10, Maks. 100)'}
+                            </span>
+                            <button type="button" class="btn-danger btn-sm" onclick="removeTpInputRow(${idx})">Hapus</button>
+                        </div>
+                    </div>
+                    <input type="text"
+                           class="form-control"
+                           maxlength="100"
+                           placeholder="Tulis kalimat Tujuan Pembelajaran (10 - 100 karakter)..."
+                           value="${escapeHtml(row.description)}"
+                           oninput="onTpInputChange(${idx}, this.value)">
+                </div>
+            `;
+        }).join('');
+    }
+
+    function onTpInputChange(idx, val) {
+        state.tpDraftRows[idx].description = val;
+        const len = val.length;
+        const isValid = len >= 10 && len <= 100;
+        const counterEl = document.getElementById(`tpCounter_${idx}`);
+        if (counterEl) {
+            counterEl.className = `char-counter ${isValid ? 'valid' : 'invalid'}`;
+            counterEl.textContent = `${len} / 100 karakter ${isValid ? '✓' : '(Min. 10, Maks. 100)'}`;
+        }
+    }
+
+    function addTpInputRow() {
+        if (state.tpDraftRows.length >= 10) {
+            showToast('Jumlah TP maksimal 10 CP per mapel per tingkat.', 'error');
+            return;
+        }
+        state.tpDraftRows.push({ id: null, description: '' });
+        drawTpDraftList();
+    }
+
+    function removeTpInputRow(idx) {
+        state.tpDraftRows.splice(idx, 1);
+        drawTpDraftList();
+    }
+
+    async function saveTpChanges() {
+        const pairKey = document.getElementById('tpMapelTingkatSelect').value;
+        const [mapelId, tingkat] = pairKey.split('__');
+
+        // Validasi Ketat: Maks 10 CP, panjang 10 - 100 karakter termasuk spasi
+        if (state.tpDraftRows.length > 10) {
+            showToast('Jumlah TP tidak boleh lebih dari 10 CP.', 'error');
+            return;
+        }
+
+        for (let i = 0; i < state.tpDraftRows.length; i++) {
+            const text = state.tpDraftRows[i].description || '';
+            const trimmedLen = text.trim().length;
+            const totalLen = text.length;
+            if (trimmedLen === 0) {
+                showToast(`TP ke-${i + 1} masih kosong. Isi atau hapus baris tersebut.`, 'error');
+                return;
+            }
+            if (totalLen < 10 || totalLen > 100) {
+                showToast(`TP ke-${i + 1} harus memiliki panjang 10 – 100 karakter termasuk spasi (saat ini ${totalLen} karakter).`, 'error');
+                return;
+            }
+        }
+
+        const btn = document.getElementById('btnSaveTp');
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+
+        try {
+            const semId = state.activeSemester ? state.activeSemester.id : null;
+            const existingCps = state.myCps.filter(cp =>
+                cp.mapel_id === mapelId && String(cp.tingkat) === String(tingkat)
+            );
+            const keptIds = new Set(state.tpDraftRows.filter(r => r.id).map(r => r.id));
+
+            // 1. Hapus CP yang dihapus user
+            const toDeleteIds = existingCps.filter(cp => !keptIds.has(cp.id)).map(cp => cp.id);
+            if (toDeleteIds.length > 0) {
+                const { error: delErr } = await db.from('cps').delete().in('id', toDeleteIds);
+                if (delErr) throw delErr;
+            }
+
+            // 2. Update CP yang sudah ada & Insert CP baru (wajib sertakan guru_id agar berdiri sendiri per guru)
+            for (let i = 0; i < state.tpDraftRows.length; i++) {
+                const row = state.tpDraftRows[i];
+                const payload = {
+                    school_id: state.schoolId,
+                    guru_id: state.guruRecord.id,
+                    mapel_id: mapelId,
+                    tingkat: String(tingkat),
+                    cp_number: i + 1,
+                    description: row.description,
+                    semester_id: semId
+                };
+
+                if (row.id) {
+                    const { error: updErr } = await db
+                        .from('cps')
+                        .update(payload)
+                        .eq('id', row.id)
+                        .eq('guru_id', state.guruRecord.id);
+                    if (updErr) throw updErr;
+                } else {
+                    const { error: insErr } = await db.from('cps').insert(payload);
+                    if (insErr) throw insErr;
+                }
+            }
+
+            showToast('Tujuan Pembelajaran berhasil disimpan!', 'success');
+            closeModal('modalEditTp');
+            await loadDashboardData();
+        } catch (err) {
+            console.error('Gagal menyimpan TP:', err);
+            const msg = String(err.message || 'Error');
+            if (msg.toLowerCase().includes('guru_id')) {
+                showToast('Gagal menyimpan TP: Kolom "guru_id" belum ada di tabel "cps" Supabase. Silakan tambahkan kolom guru_id terlebih dahulu.', 'error');
+            } else {
+                showToast('Gagal menyimpan TP: ' + msg, 'error');
+            }
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Tujuan Pembelajaran';
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // POPUP EDIT MAPPING & TAMBAH MAPEL
+    // -------------------------------------------------------------------------
+    function buildRombelCheckboxesHtml(selectedRombelIdsSet, inputName) {
+        if (state.allRombels.length === 0) {
+            return `<div class="empty-state">Belum ada rombel pada tahun ajaran aktif.</div>`;
+        }
+
+        const byTingkat = new Map();
+        state.allRombels.forEach(r => {
+            const t = String(r.tingkat);
+            if (!byTingkat.has(t)) byTingkat.set(t, []);
+            byTingkat.get(t).push(r);
+        });
+
+        let html = '';
+        Array.from(byTingkat.keys())
+            .sort((a, b) => a.localeCompare(b, 'id', { numeric: true }))
+            .forEach(tingkat => {
+                const rombels = byTingkat.get(tingkat);
+                html += `
+                    <div style="border:1px solid var(--border-color); border-radius:10px; padding:10px 12px;">
+                        <div style="font-weight:700; font-size:0.86rem; color:var(--primary);">Tingkat ${escapeHtml(tingkat)}</div>
+                        <div class="checkbox-grid">
+                            ${rombels.map(r => `
+                                <label class="checkbox-pill">
+                                    <input type="checkbox" name="${inputName}" value="${r.id}" ${selectedRombelIdsSet.has(r.id) ? 'checked' : ''}>
+                                    <span>${escapeHtml(r.name)}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+        return html;
+    }
+
+    function openEditMappingModal(mapelId) {
+        state.editingMappingMapelId = mapelId;
+        const mapel = state.allMapels.find(m => m.id === mapelId);
+        document.getElementById('modalEditMappingTitle').textContent =
+            `⚙️ Edit Mapping : ${mapel ? mapel.name : 'Mata Pelajaran'}`;
+
+        const currentRombelSet = new Set(
+            state.myAssignments.filter(a => a.mapel_id === mapelId).map(a => a.rombel_id)
+        );
+        document.getElementById('editMappingRombelContainer').innerHTML =
+            buildRombelCheckboxesHtml(currentRombelSet, 'editMappingRombel');
+
+        openModal('modalEditMapping');
+    }
+
+    async function saveEditMapping() {
+        const mapelId = state.editingMappingMapelId;
+        if (!mapelId) return;
+
+        const checkedIds = new Set(
+            Array.from(document.querySelectorAll('input[name="editMappingRombel"]:checked')).map(el => el.value)
+        );
+
+        const existingAssignments = state.myAssignments.filter(a => a.mapel_id === mapelId);
+        const existingRombelIds = new Set(existingAssignments.map(a => a.rombel_id));
+
+        const toAdd = Array.from(checkedIds).filter(id => !existingRombelIds.has(id));
+        const toRemoveIds = existingAssignments
+            .filter(a => !checkedIds.has(a.rombel_id) && a.id)
+            .map(a => a.id);
+
+        const btn = document.getElementById('btnSaveMapping');
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+
+        try {
+            if (toRemoveIds.length > 0) {
+                const { error: delErr } = await db.from('teaching_assignments').delete().in('id', toRemoveIds);
+                if (delErr) throw delErr;
+            }
+
+            if (toAdd.length > 0) {
+                const rowsToInsert = toAdd.map(rombelId => ({
+                    school_id: state.schoolId,
+                    guru_id: state.guruRecord.id,
+                    mapel_id: mapelId,
+                    rombel_id: rombelId,
+                    academic_year_id: state.activeYear ? state.activeYear.id : null,
+                    semester_id: state.activeSemester ? state.activeSemester.id : null,
+                    is_finalized: false
+                }));
+                const { error: insErr } = await db.from('teaching_assignments').insert(rowsToInsert);
+                if (insErr) throw insErr;
+            }
+
+            // Sinkronkan juga kolom rombel_ids pada tabel gurus jika mapel ini adalah mapel bawaan Beban Mengajar Admin
+            if (state.guruRecord && state.guruRecord.id && state.guruRecord.mapel_id === mapelId) {
+                await db
+                    .from('gurus')
+                    .update({ rombel_ids: Array.from(checkedIds) })
+                    .eq('id', state.guruRecord.id);
+            }
+
+            showToast('Perubahan mapping rombel berhasil disimpan.', 'success');
+            closeModal('modalEditMapping');
+            await loadDashboardData();
+        } catch (err) {
+            console.error('Gagal menyimpan mapping:', err);
+            showToast('Gagal menyimpan mapping: ' + (err.message || 'Error'), 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Perubahan';
+        }
+    }
+
+    function openTambahMapelModal() {
+        const selectEl = document.getElementById('selectNewMapel');
+        const alreadyMapelIds = new Set(state.myAssignments.map(a => a.mapel_id));
+        const availableMapels = state.allMapels.filter(m => !alreadyMapelIds.has(m.id));
+        const listToUse = availableMapels.length > 0 ? availableMapels : state.allMapels;
+
+        if (listToUse.length === 0) {
+            showToast('Belum ada master Mata Pelajaran yang dibuat Admin Sekolah.', 'error');
+            return;
+        }
+
+        selectEl.innerHTML = listToUse.map(m =>
+            `<option value="${m.id}">${escapeHtml(m.name)} ${alreadyMapelIds.has(m.id) ? '(Sudah diampu)' : ''}</option>`
+        ).join('');
+
+        document.getElementById('tambahMapelRombelContainer').innerHTML =
+            buildRombelCheckboxesHtml(new Set(), 'tambahMapelRombel');
+
+        openModal('modalTambahMapel');
+    }
+
+    async function saveTambahMapel() {
+        const mapelId = document.getElementById('selectNewMapel').value;
+        const selectedRombels = Array.from(document.querySelectorAll('input[name="tambahMapelRombel"]:checked')).map(el => el.value);
+
+        if (!mapelId) {
+            showToast('Silakan pilih mata pelajaran.', 'error');
+            return;
+        }
+        if (selectedRombels.length === 0) {
+            showToast('Pilih minimal 1 rombel yang Anda ampu.', 'error');
+            return;
+        }
+
+        const existingKeys = new Set(state.myAssignments.map(a => `${a.mapel_id}__${a.rombel_id}`));
+        const newRombels = selectedRombels.filter(rId => !existingKeys.has(`${mapelId}__${rId}`));
+
+        if (newRombels.length === 0) {
+            showToast('Semua rombel yang dipilih sudah ada dalam mapping Anda.', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('btnSaveTambahMapel');
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+
+        try {
+            const payload = newRombels.map(rId => ({
+                school_id: state.schoolId,
+                guru_id: state.guruRecord.id,
+                mapel_id: mapelId,
+                rombel_id: rId,
+                academic_year_id: state.activeYear ? state.activeYear.id : null,
+                semester_id: state.activeSemester ? state.activeSemester.id : null,
+                is_finalized: false
+            }));
+
+            const { error } = await db.from('teaching_assignments').insert(payload);
+            if (error) throw error;
+
+            showToast('Mata pelajaran dan rombel berhasil ditambahkan.', 'success');
+            closeModal('modalTambahMapel');
+            await loadDashboardData();
+        } catch (err) {
+            console.error('Gagal menambah mapel:', err);
+            showToast('Gagal menambah mapel: ' + (err.message || 'Error'), 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Mapel';
+        }
+    }
+
+    // =========================================================================
+    // 8. RENDER PANEL 3 : REKAP INPUT NILAI (37%)
+    //    - Kolom UH, PSTS, PSAS menampilkan prosentase bulat (0%-99%) dan
+    //      menampilkan tanda ceklist (✓) saja saat sudah terisi penuh 100%
+    //    - Keterangan maksimal 3 baris (siswa 1, siswa 2, +... siswa lainnya)
+    // =========================================================================
+    function getKkmForMapelTingkat(mapelObj, tingkat) {
+        if (mapelObj && mapelObj.kkm_per_tingkat && mapelObj.kkm_per_tingkat[tingkat] !== undefined) {
+            return Number(mapelObj.kkm_per_tingkat[tingkat]);
+        }
+        if (state.variabelGlobal) {
+            // Fallback KKM dari variabel_global (kkm_1 s/d kkm_6)
+            const tNum = parseInt(tingkat, 10);
+            if (tNum >= 1 && tNum <= 6 && state.variabelGlobal[`kkm_${tNum}`]) {
+                return Number(state.variabelGlobal[`kkm_${tNum}`]);
+            }
+            if (state.variabelGlobal.kkm_1) return Number(state.variabelGlobal.kkm_1);
+        }
+        return 75; // Default aman jika belum dikonfigurasi
+    }
+
+    function computeFinalScoreForStudent(studentGrades, mapelObj) {
+        const uhGrades = studentGrades.filter(g => String(g.grade_type || '').toUpperCase().startsWith('UH') && g.score !== null);
+        const pstsGrade = studentGrades.find(g => ['PSTS', 'PTS', 'STS'].includes(String(g.grade_type || '').toUpperCase()) && g.score !== null);
+        const psasGrade = studentGrades.find(g => ['PSAS', 'PAS', 'SAS'].includes(String(g.grade_type || '').toUpperCase()) && g.score !== null);
+
+        if (uhGrades.length === 0 && !pstsGrade && !psasGrade) return null;
+
+        const avgUh = uhGrades.length > 0
+            ? uhGrades.reduce((sum, g) => sum + Number(g.score), 0) / uhGrades.length
+            : 0;
+        const pstsVal = pstsGrade ? Number(pstsGrade.score) : 0;
+        const psasVal = psasGrade ? Number(psasGrade.score) : 0;
+
+        const bUh = Number(mapelObj?.bobot_uh ?? state.variabelGlobal?.bobot_uh ?? 50);
+        const bPsts = Number(mapelObj?.bobot_psts ?? state.variabelGlobal?.bobot_psts ?? 25);
+        const bPsas = Number(mapelObj?.bobot_psas ?? state.variabelGlobal?.bobot_psas ?? 25);
+        const totalBobot = (bUh + bPsts + bPsas) || 100;
+
+        return ((avgUh * bUh) + (pstsVal * bPsts) + (psasVal * bPsas)) / totalBobot;
+    }
+
+    // Helper: Format tampilan sel prosentase (0%-99% angka bulat, 100% penuh tampilkan ✓ saja)
+    function formatProgressCellHtml(filledCount, totalCount) {
+        if (!totalCount || totalCount <= 0) {
+            return '<span class="check-no">-</span>';
+        }
+        const pct = calcComponentPct(filledCount, totalCount);
+        if (pct >= 100) {
+            return '<span class="check-ok" title="Terisi 100%">✓</span>';
+        }
+        if (pct <= 0) {
+            return '<span class="pct-zero">0%</span>';
+        }
+        return `<span class="pct-progress">${pct}%</span>`;
+    }
+
+    function renderPanel3RekapNilai() {
+        const tbody = document.getElementById('rekapNilaiTbody');
+        state.rekapSummaryList = [];
+
+        if (state.myAssignments.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">Belum ada data mengajar untuk direkap.</td></tr>`;
+            return;
+        }
+
+        // Cek apakah guru mengajar lebih dari 1 mapel (untuk menampilkan label mapel kecil di bawah nama rombel)
+        const distinctMapels = new Set(state.myAssignments.map(a => a.mapel_id));
+        const showMapelLabel = distinctMapels.size > 1;
+
+        // Kelompokkan berdasarkan tingkat
+        const groupedByTingkat = new Map();
+        state.myAssignments.forEach(a => {
+            const rombel = state.allRombels.find(r => r.id === a.rombel_id);
+            const mapel = state.allMapels.find(m => m.id === a.mapel_id);
+            if (!rombel || !mapel) return;
+
+            const tKey = String(rombel.tingkat);
+            if (!groupedByTingkat.has(tKey)) groupedByTingkat.set(tKey, []);
+            groupedByTingkat.get(tKey).push({ assignment: a, rombel, mapel });
+        });
+
+        const sortedTingkats = Array.from(groupedByTingkat.keys()).sort((a, b) =>
+            a.localeCompare(b, 'id', { numeric: true })
+        );
+
+        let html = '';
+
+        sortedTingkats.forEach(tingkat => {
+            // Sub-header baris Tingkat
+            html += `
+                <tr class="tingkat-group-row">
+                    <td colspan="7">Tingkat ${escapeHtml(tingkat)}</td>
+                </tr>
+            `;
+
+            const items = groupedByTingkat.get(tingkat).sort((a, b) =>
+                String(a.rombel.name).localeCompare(String(b.rombel.name), 'id', { numeric: true }) ||
+                String(a.mapel.name).localeCompare(String(b.mapel.name), 'id')
+            );
+
+            items.forEach((item, idx) => {
+                const { assignment, rombel, mapel } = item;
+                const students = state.studentsByRombel[rombel.id] || [];
+                const totalStudents = students.length;
+                const studentIdSet = new Set(students.map(s => s.id));
+
+                // Nilai valid (tidak kosong) untuk rombel & mapel ini
+                const relevantGrades = state.gradesCache.filter(g =>
+                    g.mapel_id === mapel.id && studentIdSet.has(g.student_id) && g.score !== null && g.score !== ''
+                );
+
+                // Daftar TP/CP milik guru untuk mapel & tingkat ini
+                const cpList = state.myCps.filter(cp => cp.mapel_id === mapel.id && String(cp.tingkat) === String(tingkat));
+                const cpIdSet = new Set(cpList.map(c => c.id));
+
+                // 1. Hitung Prosentase UH (berdasarkan total slot siswa x jumlah CP, fallback ke jumlah siswa jika belum ada CP)
+                let uhFilled = 0;
+                let uhTotal = 0;
+                if (totalStudents > 0) {
+                    if (cpList.length > 0) {
+                        uhTotal = totalStudents * cpList.length;
+                        const filledUhSlots = new Set();
+                        relevantGrades.forEach(g => {
+                            if (g.cp_id && cpIdSet.has(g.cp_id)) {
+                                filledUhSlots.add(`${g.student_id}__${g.cp_id}`);
+                            }
+                        });
+                        uhFilled = filledUhSlots.size;
+                    } else {
+                        uhTotal = totalStudents;
+                        const filledUhStudents = new Set(
+                            relevantGrades
+                                .filter(g => String(g.grade_type || '').toUpperCase().startsWith('UH'))
+                                .map(g => g.student_id)
+                        );
+                        uhFilled = filledUhStudents.size;
+                    }
+                }
+
+                // 2. Hitung Prosentase PSTS (siswa unik yang sudah memiliki nilai PSTS)
+                const filledPstsStudents = new Set(
+                    relevantGrades
+                        .filter(g => ['PSTS', 'PTS', 'STS'].includes(String(g.grade_type || '').toUpperCase()))
+                        .map(g => g.student_id)
+                );
+
+                // 3. Hitung Prosentase PSAS (siswa unik yang sudah memiliki nilai PSAS)
+                const filledPsasStudents = new Set(
+                    relevantGrades
+                        .filter(g => ['PSAS', 'PAS', 'SAS'].includes(String(g.grade_type || '').toUpperCase()))
+                        .map(g => g.student_id)
+                );
+
+                const uhCellHtml = formatProgressCellHtml(uhFilled, uhTotal);
+                const pstsCellHtml = formatProgressCellHtml(filledPstsStudents.size, totalStudents);
+                const psasCellHtml = formatProgressCellHtml(filledPsasStudents.size, totalStudents);
+
+                // 4. Finalisasi
+                const finalisasiHtml = assignment.is_finalized
+                    ? `<span class="check-ok">✓</span><div style="font-size:0.71rem; color:var(--text-muted);">${escapeHtml(formatDateTimeId(assignment.finalized_at))}</div>`
+                    : `<span class="badge badge-warning">Belum Finalisasi</span>`;
+
+                // 5. Analisis Keterangan: Nilai Kosong & Belum Tuntas (di bawah KKM)
+                const kkm = getKkmForMapelTingkat(mapel, tingkat);
+                const emptyIssues = [];
+                const belowKkmIssues = [];
+
+                students.forEach(st => {
+                    const stGrades = relevantGrades.filter(g => g.student_id === st.id);
+                    const stHasUh = cpList.length > 0
+                        ? cpList.every(cp => stGrades.some(g => g.cp_id === cp.id))
+                        : stGrades.some(g => String(g.grade_type || '').toUpperCase().startsWith('UH'));
+                    const stHasPsts = stGrades.some(g => ['PSTS', 'PTS', 'STS'].includes(String(g.grade_type || '').toUpperCase()));
+                    const stHasPsas = stGrades.some(g => ['PSAS', 'PAS', 'SAS'].includes(String(g.grade_type || '').toUpperCase()));
+
+                    // Jika siswa belum punya nilai lengkap (UH / PSTS / PSAS)
+                    if (!stHasUh || !stHasPsts || !stHasPsas) {
+                        emptyIssues.push({ type: 'warn', text: `${st.full_name} (nilai kosong)` });
+                    } else {
+                        const finalScore = computeFinalScoreForStudent(stGrades, mapel);
+                        if (finalScore !== null && finalScore < kkm) {
+                            belowKkmIssues.push({ type: 'kkm', text: `${st.full_name} (belum tuntas: ${finalScore.toFixed(1)})` });
+                        }
+                    }
+                });
+
+                const allIssues = [...emptyIssues, ...belowKkmIssues];
+
+                // Batasi maksimal 3 baris total (siswa 1, siswa 2, +... siswa lainnya)
+                let ketHtml = '';
+                if (totalStudents === 0) {
+                    ketHtml = `<span class="badge badge-neutral">Belum ada siswa</span>`;
+                } else if (allIssues.length === 0) {
+                    ketHtml = `<span class="badge badge-success">Data OK</span>`;
+                } else {
+                    const lines = [];
+                    if (allIssues.length <= 3) {
+                        allIssues.forEach(iss => {
+                            const cls = iss.type === 'warn' ? 'ket-item-warn' : 'ket-item-kkm';
+                            lines.push(`<span class="${cls}" title="${escapeHtml(iss.text)}">• ${escapeHtml(iss.text)}</span>`);
+                        });
+                    } else {
+                        allIssues.slice(0, 2).forEach(iss => {
+                            const cls = iss.type === 'warn' ? 'ket-item-warn' : 'ket-item-kkm';
+                            lines.push(`<span class="${cls}" title="${escapeHtml(iss.text)}">• ${escapeHtml(iss.text)}</span>`);
+                        });
+                        const sisa = allIssues.length - 2;
+                        lines.push(`<span class="ket-item-more">+${sisa} siswa lainnya</span>`);
+                    }
+                    ketHtml = `<div class="ket-list">${lines.join('')}</div>`;
+                }
+
+                // Simpan data ringkasan per rombel agar tampilan popup Unduh Rekap Nilai 100% identik dengan Panel 3
+                state.rekapSummaryList.push({
+                    assignment,
+                    rombel,
+                    mapel,
+                    tingkat,
+                    showMapelLabel,
+                    uhCellHtml,
+                    pstsCellHtml,
+                    psasCellHtml,
+                    finalisasiHtml
+                });
+
+                html += `
+                    <tr>
+                        <td class="text-center">${idx + 1}</td>
+                        <td>
+                            <strong>${escapeHtml(rombel.name)}</strong>
+                            ${showMapelLabel ? `<div style="font-size:0.73rem; color:var(--text-muted);">${escapeHtml(mapel.name)}</div>` : ''}
+                        </td>
+                        <td class="text-center">${uhCellHtml}</td>
+                        <td class="text-center">${pstsCellHtml}</td>
+                        <td class="text-center">${psasCellHtml}</td>
+                        <td class="text-center">${finalisasiHtml}</td>
+                        <td class="col-ket">${ketHtml}</td>
+                    </tr>
+                `;
+            });
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    // =========================================================================
+    // 8B. POPUP UNDUH REKAP NILAI & EKSPOR EXCEL (.XLSX) MULTI-SHEET
+    //     - 1 File Excel: Rekap_Nilai_<Nama Guru>.xlsx
+    //     - 1 Rombel = 1 Sheet (Nama Sheet = Nama Rombel)
+    //     - Kolom Lengkap: No, Nama Siswa, Nilai UH (TP 1..TP 10), PSTS, PSAS,
+    //       Tambahan, Nilai Raport (Nilai Asli & Nilai Jadi), Peringkat, Deskripsi
+    // =========================================================================
+    function sanitizeFileNamePart(name) {
+        return String(name || 'Guru')
+            .replace(/[\\/:*?"<>|]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim() || 'Guru';
+    }
+
+    function buildUniqueSheetName(baseName, mapelName, usedNamesSet) {
+        const clean = (str) => String(str || 'Sheet')
+            .replace(/[\\/?*\[\]:]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        let candidate = clean(baseName).slice(0, 31) || 'Rombel';
+        if (!usedNamesSet.has(candidate.toLowerCase())) {
+            usedNamesSet.add(candidate.toLowerCase());
+            return candidate;
+        }
+
+        // Jika guru mengajar lebih dari 1 mapel di rombel yang sama, tambahkan singkatan mapel
+        const mapelTag = clean(mapelName).slice(0, 12);
+        let withMapel = `${clean(baseName)} - ${mapelTag}`.slice(0, 31);
+        if (!usedNamesSet.has(withMapel.toLowerCase())) {
+            usedNamesSet.add(withMapel.toLowerCase());
+            return withMapel;
+        }
+
+        let counter = 2;
+        while (true) {
+            const suffix = ` (${counter})`;
+            const numbered = `${clean(baseName).slice(0, 31 - suffix.length)}${suffix}`;
+            if (!usedNamesSet.has(numbered.toLowerCase())) {
+                usedNamesSet.add(numbered.toLowerCase());
+                return numbered;
+            }
+            counter++;
+        }
+    }
+
+    function openUnduhRekapModal() {
+        const tbody = document.getElementById('unduhRekapTbody');
+        const selectAllChk = document.getElementById('chkSelectAllUnduhRekap');
+        const guruName = state.guruRecord?.name || state.guruSession?.display_name || 'Guru';
+        const safeGuruName = sanitizeFileNamePart(guruName);
+
+        document.getElementById('unduhRekapNamaFilePreview').textContent = safeGuruName;
+        document.getElementById('unduhRekapSubtitle').textContent =
+            `Guru: ${guruName} • Hanya menampilkan rombel yang Anda ampu`;
+
+        if (!state.rekapSummaryList || state.rekapSummaryList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Belum ada rombel yang Anda ampu untuk diunduh.</td></tr>`;
+            if (selectAllChk) {
+                selectAllChk.checked = false;
+                selectAllChk.indeterminate = false;
+                selectAllChk.disabled = true;
+            }
+            updateUnduhRekapSelectionSummary();
+            openModal('modalUnduhRekap');
+            return;
+        }
+
+        if (selectAllChk) selectAllChk.disabled = false;
+
+        // Kelompokkan tampilan popup per Tingkat persis seperti Panel 3 Rekap Nilai
+        const groupedByTingkat = new Map();
+        state.rekapSummaryList.forEach((item, globalIdx) => {
+            const tKey = String(item.tingkat);
+            if (!groupedByTingkat.has(tKey)) groupedByTingkat.set(tKey, []);
+            groupedByTingkat.get(tKey).push({ ...item, globalIdx });
+        });
+
+        const sortedTingkats = Array.from(groupedByTingkat.keys()).sort((a, b) =>
+            a.localeCompare(b, 'id', { numeric: true })
+        );
+
+        let html = '';
+        sortedTingkats.forEach(tingkat => {
+            html += `
+                <tr class="tingkat-group-row">
+                    <td colspan="6">Tingkat ${escapeHtml(tingkat)}</td>
+                </tr>
+            `;
+
+            groupedByTingkat.get(tingkat).forEach(item => {
+                html += `
+                    <tr class="unduh-rekap-row selected" onclick="onClickUnduhRekapRow(event, ${item.globalIdx})">
+                        <td class="text-center">
+                            <input type="checkbox"
+                                   id="chkUnduhRekap_${item.globalIdx}"
+                                   name="unduhRekapCheckbox"
+                                   value="${item.globalIdx}"
+                                   checked
+                                   onchange="updateUnduhRekapSelectionSummary()">
+                        </td>
+                        <td>
+                            <strong>${escapeHtml(item.rombel.name)}</strong>
+                            ${item.showMapelLabel ? `<div style="font-size:0.73rem; color:var(--text-muted);">${escapeHtml(item.mapel.name)}</div>` : ''}
+                        </td>
+                        <td class="text-center">${item.uhCellHtml}</td>
+                        <td class="text-center">${item.pstsCellHtml}</td>
+                        <td class="text-center">${item.psasCellHtml}</td>
+                        <td class="text-center">${item.finalisasiHtml}</td>
+                    </tr>
+                `;
+            });
+        });
+
+        tbody.innerHTML = html;
+        updateUnduhRekapSelectionSummary();
+        openModal('modalUnduhRekap');
+    }
+
+    function onClickUnduhRekapRow(event, idx) {
+        // Hindari toggle ganda jika klik langsung pada elemen checkbox
+        if (event.target && event.target.tagName === 'INPUT') return;
+        const chk = document.getElementById(`chkUnduhRekap_${idx}`);
+        if (chk) {
+            chk.checked = !chk.checked;
+            updateUnduhRekapSelectionSummary();
+        }
+    }
+
+    function toggleSelectAllUnduhRekap(isChecked) {
+        document.querySelectorAll('input[name="unduhRekapCheckbox"]').forEach(cb => {
+            cb.checked = isChecked;
+        });
+        updateUnduhRekapSelectionSummary();
+    }
+
+    function updateUnduhRekapSelectionSummary() {
+        const checkboxes = Array.from(document.querySelectorAll('input[name="unduhRekapCheckbox"]'));
+        const total = checkboxes.length;
+        let checkedCount = 0;
+
+        checkboxes.forEach(cb => {
+            const tr = cb.closest('tr');
+            if (cb.checked) {
+                checkedCount++;
+                if (tr) tr.classList.add('selected');
+            } else {
+                if (tr) tr.classList.remove('selected');
+            }
+        });
+
+        const selectAllChk = document.getElementById('chkSelectAllUnduhRekap');
+        if (selectAllChk) {
+            selectAllChk.checked = total > 0 && checkedCount === total;
+            selectAllChk.indeterminate = checkedCount > 0 && checkedCount < total;
+        }
+
+        const badge = document.getElementById('unduhRekapSelectedBadge');
+        if (badge) {
+            badge.textContent = `${checkedCount} / ${total} rombel dipilih`;
+            badge.className = 'badge ' + (checkedCount > 0 ? 'badge-success' : 'badge-neutral');
+        }
+
+        const btnConfirm = document.getElementById('btnConfirmUnduhRekap');
+        if (btnConfirm) {
+            btnConfirm.disabled = checkedCount === 0;
+        }
+    }
+
+    // Helper: Ambil batas nilai min/max & jumlah desimal (koma) untuk Nilai Jadi
+    function getNilaiMinMaxForMapelTingkat(mapelObj, tingkat) {
+        let minVal = null;
+        let maxVal = null;
+
+        if (mapelObj && mapelObj.nilai_min_per_tingkat && mapelObj.nilai_min_per_tingkat[tingkat] !== undefined && mapelObj.nilai_min_per_tingkat[tingkat] !== '') {
+            minVal = Number(mapelObj.nilai_min_per_tingkat[tingkat]);
+        } else if (state.variabelGlobal && state.variabelGlobal.nilai_min !== null && state.variabelGlobal.nilai_min !== undefined && state.variabelGlobal.nilai_min !== '') {
+            minVal = Number(state.variabelGlobal.nilai_min);
+        }
+
+        if (mapelObj && mapelObj.nilai_max_per_tingkat && mapelObj.nilai_max_per_tingkat[tingkat] !== undefined && mapelObj.nilai_max_per_tingkat[tingkat] !== '') {
+            maxVal = Number(mapelObj.nilai_max_per_tingkat[tingkat]);
+        } else if (state.variabelGlobal && state.variabelGlobal.nilai_max !== null && state.variabelGlobal.nilai_max !== undefined && state.variabelGlobal.nilai_max !== '') {
+            maxVal = Number(state.variabelGlobal.nilai_max);
+        }
+
+        if (isNaN(minVal) || minVal <= 0) minVal = null;
+        if (isNaN(maxVal) || maxVal <= 0) maxVal = null;
+        if (minVal !== null && maxVal !== null && minVal > maxVal) {
+            minVal = null;
+            maxVal = null;
+        }
+
+        return { minVal, maxVal };
+    }
+
+    function roundNumber(val, decimals) {
+        const factor = Math.pow(10, decimals);
+        return Math.round((val + Number.EPSILON) * factor) / factor;
+    }
+
+    function lowerCaseFirstChar(str) {
+        const trimmed = String(str || '').trim().replace(/\.$/, '');
+        if (!trimmed) return '';
+        return trimmed.charAt(0).toLowerCase() + trimmed.slice(1);
+    }
+
+    // Helper: Auto-generate deskripsi raport berdasarkan TP/CP tertinggi & terendah (mengabaikan PSTS/PSAS/Tambahan)
+    function generateRaportDescription(scoredTpList, kkm) {
+        if (!scoredTpList || scoredTpList.length === 0) return '';
+
+        const validWithDesc = scoredTpList.filter(item => item.description && item.description.trim().length > 0);
+        if (validWithDesc.length === 0) return '';
+
+        let maxItem = validWithDesc[0];
+        let minItem = validWithDesc[0];
+
+        validWithDesc.forEach(item => {
+            if (item.score > maxItem.score) maxItem = item;
+            if (item.score < minItem.score) minItem = item;
+        });
+
+        const maxDesc = lowerCaseFirstChar(maxItem.description);
+        const minDesc = lowerCaseFirstChar(minItem.description);
+
+        if (validWithDesc.length === 1 || maxItem.tpNumber === minItem.tpNumber) {
+            if (maxItem.score >= kkm) {
+                const predikat = maxItem.score >= Math.min(95, kkm + 12) ? 'sangat baik' : 'baik';
+                return `Menunjukkan penguasaan yang ${predikat} dalam ${maxDesc}.`;
+            }
+            return `Perlu bimbingan lebih lanjut dalam ${maxDesc}.`;
+        }
+
+        const predikatMax = maxItem.score >= Math.min(95, kkm + 12) ? 'sangat baik' : 'baik';
+        const kalimatMax = `Menunjukkan penguasaan yang ${predikatMax} dalam ${maxDesc}.`;
+        const kalimatMin = minItem.score < kkm
+            ? `Perlu bimbingan lebih lanjut dalam ${minDesc}.`
+            : `Perlu peningkatan dalam ${minDesc}.`;
+
+        return `${kalimatMax} ${kalimatMin}`;
+    }
+
+    // Helper: Susun data lengkap siswa untuk 1 rombel (TP 1..10, PSTS, PSAS, Tambahan, Nilai Asli, Nilai Jadi, Peringkat, Deskripsi)
+    function buildRombelRekapRows(rekapItem) {
+        const { rombel, mapel, tingkat } = rekapItem;
+        const students = state.studentsByRombel[rombel.id] || [];
+        const studentIdSet = new Set(students.map(s => s.id));
+        const kkm = getKkmForMapelTingkat(mapel, tingkat);
+
+        const cpList = state.myCps
+            .filter(cp => cp.mapel_id === mapel.id && String(cp.tingkat) === String(tingkat))
+            .sort((a, b) => (a.cp_number || 0) - (b.cp_number || 0));
+
+        // Petakan CP berdasarkan nomor 1..10
+        const cpByNumber = {};
+        cpList.forEach((cp, idx) => {
+            const num = Number(cp.cp_number) || (idx + 1);
+            if (num >= 1 && num <= 10 && !cpByNumber[num]) {
+                cpByNumber[num] = cp;
+            }
+        });
+
+        const relevantGrades = state.gradesCache.filter(g =>
+            g.mapel_id === mapel.id && studentIdSet.has(g.student_id) && g.score !== null && g.score !== ''
+        );
+
+        const bUh = Number(mapel?.bobot_uh ?? state.variabelGlobal?.bobot_uh ?? 50);
+        const bPsts = Number(mapel?.bobot_psts ?? state.variabelGlobal?.bobot_psts ?? 25);
+        const bPsas = Number(mapel?.bobot_psas ?? state.variabelGlobal?.bobot_psas ?? 25);
+        const totalBobot = (bUh + bPsts + bPsas) || 100;
+
+        const { minVal, maxVal } = getNilaiMinMaxForMapelTingkat(mapel, tingkat);
+        const rawJumlahKoma = state.variabelGlobal?.jumlah_koma;
+        const jumlahKoma = (rawJumlahKoma !== null && rawJumlahKoma !== undefined && !isNaN(Number(rawJumlahKoma)))
+            ? Math.max(0, Math.min(2, Number(rawJumlahKoma)))
+            : 0;
+
+        const rows = students.map((st, idx) => {
+            const stGrades = relevantGrades.filter(g => g.student_id === st.id);
+
+            // 1. Ekstrak Nilai UH untuk TP 1 s/d TP 10 (semua 10 kolom muncul)
+            const tpScores = [];
+            const scoredTpList = [];
+            for (let tpNum = 1; tpNum <= 10; tpNum++) {
+                const cpObj = cpByNumber[tpNum] || null;
+                let gradeRow = null;
+
+                if (cpObj) {
+                    gradeRow = stGrades.find(g => g.cp_id === cpObj.id) || null;
+                }
+                if (!gradeRow) {
+                    const fallbackTypes = [`UH${tpNum}`, `UH ${tpNum}`, `UH_${tpNum}`, `TP${tpNum}`, `TP ${tpNum}`, `TP_${tpNum}`];
+                    gradeRow = stGrades.find(g => fallbackTypes.includes(String(g.grade_type || '').toUpperCase().trim())) || null;
+                }
+
+                const scoreVal = (gradeRow && gradeRow.score !== null && gradeRow.score !== '' && !isNaN(Number(gradeRow.score)))
+                    ? Number(gradeRow.score)
+                    : null;
+
+                tpScores.push(scoreVal);
+
+                if (scoreVal !== null) {
+                    scoredTpList.push({
+                        tpNumber: tpNum,
+                        score: scoreVal,
+                        description: cpObj ? cpObj.description : ''
+                    });
+                }
+            }
+
+            // 2. Ekstrak Nilai PSTS, PSAS, dan Tambahan
+            const pstsRow = stGrades.find(g => ['PSTS', 'PTS', 'STS'].includes(String(g.grade_type || '').toUpperCase().trim()));
+            const psasRow = stGrades.find(g => ['PSAS', 'PAS', 'SAS'].includes(String(g.grade_type || '').toUpperCase().trim()));
+            const tambahanRow = stGrades.find(g => ['TAMBAHAN', 'NILAI_TAMBAHAN', 'BONUS', 'KATROL', 'EXTRA', 'PLUS'].includes(String(g.grade_type || '').toUpperCase().trim()));
+            const explicitJadiRow = stGrades.find(g => ['NILAI_JADI', 'RAPORT', 'NILAI_RAPORT', 'AKHIR'].includes(String(g.grade_type || '').toUpperCase().trim()));
+
+            const pstsVal = (pstsRow && !isNaN(Number(pstsRow.score))) ? Number(pstsRow.score) : null;
+            const psasVal = (psasRow && !isNaN(Number(psasRow.score))) ? Number(psasRow.score) : null;
+            const tambahanVal = (tambahanRow && !isNaN(Number(tambahanRow.score))) ? Number(tambahanRow.score) : null;
+
+            // 3. Hitung Nilai Raport (Nilai Asli & Nilai Jadi)
+            const filledUhScores = tpScores.filter(v => v !== null);
+            const hasAnyCoreGrade = filledUhScores.length > 0 || pstsVal !== null || psasVal !== null;
+
+            let nilaiAsli = null;
+            let nilaiJadi = null;
+
+            if (hasAnyCoreGrade) {
+                const avgUh = filledUhScores.length > 0
+                    ? filledUhScores.reduce((sum, v) => sum + v, 0) / filledUhScores.length
+                    : 0;
+                const rawAsli = ((avgUh * bUh) + ((pstsVal ?? 0) * bPsts) + ((psasVal ?? 0) * bPsas)) / totalBobot;
+                nilaiAsli = roundNumber(rawAsli, 2);
+
+                if (explicitJadiRow && !isNaN(Number(explicitJadiRow.score))) {
+                    nilaiJadi = roundNumber(Number(explicitJadiRow.score), jumlahKoma);
+                } else {
+                    let computedJadi = rawAsli + (tambahanVal ?? 0);
+                    if (minVal !== null && computedJadi < minVal) computedJadi = minVal;
+                    if (maxVal !== null && computedJadi > maxVal) computedJadi = maxVal;
+                    computedJadi = Math.min(100, Math.max(0, computedJadi));
+                    nilaiJadi = roundNumber(computedJadi, jumlahKoma);
+                }
+            }
+
+            // 4. Auto-generate Deskripsi Raport (hanya dari TP/CP, abaikan PSTS/PSAS/Tambahan)
+            const deskripsi = generateRaportDescription(scoredTpList, kkm);
+
+            return {
+                no: idx + 1,
+                fullName: st.full_name || '-',
+                tpScores,
+                pstsVal,
+                psasVal,
+                tambahanVal: hasAnyCoreGrade ? (tambahanVal ?? 0) : tambahanVal,
+                nilaiAsli,
+                nilaiJadi,
+                peringkat: null,
+                deskripsi
+            };
+        });
+
+        // 5. Hitung Peringkat per Rombel berdasarkan Nilai Jadi (tie-breaker Nilai Asli)
+        const rankedIndices = rows
+            .map((r, i) => ({ i, nilaiJadi: r.nilaiJadi, nilaiAsli: r.nilaiAsli }))
+            .filter(item => item.nilaiJadi !== null)
+            .sort((a, b) => (b.nilaiJadi - a.nilaiJadi) || ((b.nilaiAsli ?? 0) - (a.nilaiAsli ?? 0)));
+
+        let currentRank = 1;
+        rankedIndices.forEach((item, pos) => {
+            if (pos > 0) {
+                const prev = rankedIndices[pos - 1];
+                if (item.nilaiJadi !== prev.nilaiJadi || item.nilaiAsli !== prev.nilaiAsli) {
+                    currentRank = pos + 1;
+                }
+            }
+            rows[item.i].peringkat = currentRank;
+        });
+
+        return { rows, kkm, cpByNumber };
+    }
+
+    async function exportSelectedRekapToExcel() {
+        if (typeof ExcelJS === 'undefined') {
+            showToast('Library ExcelJS gagal dimuat. Pastikan koneksi internet aktif lalu muat ulang halaman.', 'error');
+            return;
+        }
+
+        const selectedIndices = Array.from(document.querySelectorAll('input[name="unduhRekapCheckbox"]:checked'))
+            .map(cb => parseInt(cb.value, 10))
+            .filter(idx => !isNaN(idx) && state.rekapSummaryList[idx]);
+
+        if (selectedIndices.length === 0) {
+            showToast('Pilih minimal 1 rombel untuk diunduh.', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('btnConfirmUnduhRekap');
+        btn.disabled = true;
+        btn.textContent = '⏳ Menyiapkan Excel...';
+
+        try {
+            const workbook = new ExcelJS.Workbook();
+            workbook.creator = 'Sistem Nilai Pro';
+            workbook.created = new Date();
+
+            const schoolName = document.getElementById('schoolNameDisplay')?.textContent || 'Sekolah';
+            const guruName = state.guruRecord?.name || state.guruSession?.display_name || 'Guru';
+            const yearText = state.activeYear ? state.activeYear.name : '-';
+            const semText = state.activeSemester ? state.activeSemester.name : '-';
+            const usedSheetNames = new Set();
+
+            const thinBorder = {
+                top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+            };
+
+            const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+            const subHeaderFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+            const zebraFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+            const titleFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+            const metaFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+
+            selectedIndices.forEach(idx => {
+                const item = state.rekapSummaryList[idx];
+                const { assignment, rombel, mapel, tingkat } = item;
+                const { rows, kkm, cpByNumber } = buildRombelRekapRows(item);
+
+                const sheetName = buildUniqueSheetName(rombel.name, mapel.name, usedSheetNames);
+                const ws = workbook.addWorksheet(sheetName, {
+                    views: [{ state: 'frozen', xSplit: 2, ySplit: 9 }]
+                });
+
+                // Atur lebar 19 kolom (A s/d S)
+                ws.columns = [
+                    { width: 6 },   // A: No
+                    { width: 28 },  // B: Nama Siswa
+                    { width: 7.5 }, // C: TP 1
+                    { width: 7.5 }, // D: TP 2
+                    { width: 7.5 }, // E: TP 3
+                    { width: 7.5 }, // F: TP 4
+                    { width: 7.5 }, // G: TP 5
+                    { width: 7.5 }, // H: TP 6
+                    { width: 7.5 }, // I: TP 7
+                    { width: 7.5 }, // J: TP 8
+                    { width: 7.5 }, // K: TP 9
+                    { width: 7.5 }, // L: TP 10
+                    { width: 11 },  // M: Nilai PSTS
+                    { width: 11 },  // N: Nilai PSAS
+                    { width: 11 },  // O: Tambahan
+                    { width: 11 },  // P: Nilai Asli
+                    { width: 11 },  // Q: Nilai Jadi
+                    { width: 11 },  // R: Peringkat
+                    { width: 48 }   // S: Deskripsi
+                ];
+
+                // BARIS 1: JUDUL UTAMA
+                ws.mergeCells('A1:S1');
+                const titleCell = ws.getCell('A1');
+                titleCell.value = `REKAP NILAI SISWA — ${schoolName.toUpperCase()}`;
+                titleCell.font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
+                titleCell.fill = titleFill;
+                titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+                ws.getRow(1).height = 26;
+
+                // BARIS 2: SUBJUDUL TAHUN AJARAN & SEMESTER
+                ws.mergeCells('A2:S2');
+                const subCell = ws.getCell('A2');
+                subCell.value = `Tahun Ajaran ${yearText} • Semester ${semText}`;
+                subCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF334155' } };
+                subCell.alignment = { vertical: 'middle', horizontal: 'center' };
+                ws.getRow(2).height = 19;
+
+                // BARIS 3: SPACER
+                ws.getRow(3).height = 8;
+
+                // BARIS 4 - 6: METADATA (TINGKAT, KELAS, NAMA MAPEL, NAMA GURU, KKM, STATUS FINALISASI)
+                const finalStatusText = assignment.is_finalized
+                    ? `Sudah Finalisasi (${formatDateTimeId(assignment.finalized_at)})`
+                    : 'Belum Finalisasi';
+
+                const metaRows = [
+                    { row: 4, lLabel: 'Tingkat', lVal: `Tingkat ${tingkat}`, rLabel: 'Nama Guru', rVal: guruName },
+                    { row: 5, lLabel: 'Kelas / Rombel', lVal: rombel.name, rLabel: 'KKM', rVal: kkm },
+                    { row: 6, lLabel: 'Mata Pelajaran', lVal: mapel.name, rLabel: 'Status Finalisasi', rVal: finalStatusText }
+                ];
+
+                metaRows.forEach(m => {
+                    ws.mergeCells(`A${m.row}:B${m.row}`);
+                    ws.mergeCells(`C${m.row}:J${m.row}`);
+                    ws.mergeCells(`K${m.row}:M${m.row}`);
+                    ws.mergeCells(`N${m.row}:S${m.row}`);
+
+                    const cLLabel = ws.getCell(`A${m.row}`);
+                    const cLVal = ws.getCell(`C${m.row}`);
+                    const cRLabel = ws.getCell(`K${m.row}`);
+                    const cRVal = ws.getCell(`N${m.row}`);
+
+                    cLLabel.value = m.lLabel;
+                    cLVal.value = `: ${m.lVal}`;
+                    cRLabel.value = m.rLabel;
+                    cRVal.value = `: ${m.rVal}`;
+
+                    [cLLabel, cRLabel].forEach(c => {
+                        c.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+                        c.fill = metaFill;
+                        c.alignment = { vertical: 'middle', horizontal: 'left' };
+                    });
+                    [cLVal, cRVal].forEach(c => {
+                        c.font = { name: 'Calibri', size: 10, bold: false, color: { argb: 'FF0F172A' } };
+                        c.fill = metaFill;
+                        c.alignment = { vertical: 'middle', horizontal: 'left' };
+                    });
+
+                    for (let col = 1; col <= 19; col++) {
+                        ws.getCell(m.row, col).border = thinBorder;
+                    }
+                    ws.getRow(m.row).height = 20;
+                });
+
+                // BARIS 7: SPACER
+                ws.getRow(7).height = 8;
+
+                // BARIS 8 & 9: HEADER TABEL 2 TINGKAT
+                ws.mergeCells('A8:A9'); ws.getCell('A8').value = 'No';
+                ws.mergeCells('B8:B9'); ws.getCell('B8').value = 'Nama Siswa';
+                ws.mergeCells('C8:L8'); ws.getCell('C8').value = 'Nilai UH';
+                for (let tp = 1; tp <= 10; tp++) {
+                    ws.getCell(9, 2 + tp).value = `TP ${tp}`;
+                }
+                ws.mergeCells('M8:M9'); ws.getCell('M8').value = 'Nilai PSTS';
+                ws.mergeCells('N8:N9'); ws.getCell('N8').value = 'Nilai PSAS';
+                ws.mergeCells('O8:O9'); ws.getCell('O8').value = 'Tambahan';
+                ws.mergeCells('P8:Q8'); ws.getCell('P8').value = 'Nilai Raport';
+                ws.getCell('P9').value = 'Nilai Asli';
+                ws.getCell('Q9').value = 'Nilai Jadi';
+                ws.mergeCells('R8:R9'); ws.getCell('R8').value = 'Peringkat';
+                ws.mergeCells('S8:S9'); ws.getCell('S8').value = 'Deskripsi';
+
+                ws.getRow(8).height = 22;
+                ws.getRow(9).height = 21;
+
+                for (let r = 8; r <= 9; r++) {
+                    for (let col = 1; col <= 19; col++) {
+                        const cell = ws.getCell(r, col);
+                        const isSubRow = (r === 9) && ((col >= 3 && col <= 12) || (col >= 16 && col <= 17));
+                        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+                        cell.fill = isSubRow ? subHeaderFill : headerFill;
+                        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                        cell.border = thinBorder;
+                    }
+                }
+
+                // BARIS 10+: DATA SISWA
+                if (rows.length === 0) {
+                    ws.mergeCells('A10:S10');
+                    const emptyCell = ws.getCell('A10');
+                    emptyCell.value = 'Belum ada data siswa pada rombel ini.';
+                    emptyCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF64748B' } };
+                    emptyCell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    for (let col = 1; col <= 19; col++) ws.getCell(10, col).border = thinBorder;
+                    ws.getRow(10).height = 22;
+                } else {
+                    rows.forEach((st, rIdx) => {
+                        const excelRowNum = 10 + rIdx;
+                        const rowValues = [
+                            st.no,
+                            st.fullName,
+                            ...st.tpScores.map(v => v !== null ? v : ''),
+                            st.pstsVal !== null ? st.pstsVal : '',
+                            st.psasVal !== null ? st.psasVal : '',
+                            st.tambahanVal !== null ? st.tambahanVal : '',
+                            st.nilaiAsli !== null ? st.nilaiAsli : '',
+                            st.nilaiJadi !== null ? st.nilaiJadi : '',
+                            st.peringkat !== null ? st.peringkat : '-',
+                            st.deskripsi || ''
+                        ];
+
+                        const rowObj = ws.getRow(excelRowNum);
+                        rowObj.values = rowValues;
+
+                        const isZebra = rIdx % 2 === 1;
+                        const isBelowKkm = st.nilaiJadi !== null && st.nilaiJadi < kkm;
+
+                        for (let col = 1; col <= 19; col++) {
+                            const cell = rowObj.getCell(col);
+                            cell.font = { name: 'Calibri', size: 10, color: { argb: 'FF0F172A' } };
+                            cell.border = thinBorder;
+                            if (isZebra) cell.fill = zebraFill;
+
+                            if (col === 2) {
+                                cell.alignment = { vertical: 'middle', horizontal: 'left' };
+                            } else if (col === 19) {
+                                cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+                            } else {
+                                cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                            }
+
+                            // Sorot Nilai Jadi (kolom Q / 17) agar menonjol & merah jika di bawah KKM
+                            if (col === 17 && st.nilaiJadi !== null) {
+                                cell.font = {
+                                    name: 'Calibri',
+                                    size: 10,
+                                    bold: true,
+                                    color: { argb: isBelowKkm ? 'FFDC2626' : 'FF047857' }
+                                };
+                            }
+
+                            // Peringkat (kolom R / 18) tebal
+                            if (col === 18 && st.peringkat !== null) {
+                                cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF1E3A8A' } };
+                            }
+                        }
+
+                        // Estimasi tinggi baris dinamis berdasarkan panjang Deskripsi
+                        const descLen = (st.deskripsi || '').length;
+                        rowObj.height = descLen > 95 ? 42 : (descLen > 48 ? 30 : 21);
+                    });
+                }
+
+                // REFERENSI DAFTAR TUJUAN PEMBELAJARAN (TP) DI BAWAH TABEL
+                const tpEntries = [];
+                for (let tp = 1; tp <= 10; tp++) {
+                    if (cpByNumber[tp] && cpByNumber[tp].description) {
+                        tpEntries.push({ num: tp, desc: cpByNumber[tp].description });
+                    }
+                }
+
+                if (tpEntries.length > 0) {
+                    const startTpRow = 10 + Math.max(1, rows.length) + 1;
+                    ws.mergeCells(`A${startTpRow}:S${startTpRow}`);
+                    const tpHeadCell = ws.getCell(`A${startTpRow}`);
+                    tpHeadCell.value = 'Keterangan Tujuan Pembelajaran (TP):';
+                    tpHeadCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF1E3A8A' } };
+                    ws.getRow(startTpRow).height = 20;
+
+                    tpEntries.forEach((tpItem, tIdx) => {
+                        const rNum = startTpRow + 1 + tIdx;
+                        ws.getCell(`A${rNum}`).value = `TP ${tpItem.num}`;
+                        ws.getCell(`A${rNum}`).font = { name: 'Calibri', size: 9.5, bold: true, color: { argb: 'FF334155' } };
+                        ws.getCell(`A${rNum}`).alignment = { vertical: 'middle', horizontal: 'center' };
+
+                        ws.mergeCells(`B${rNum}:S${rNum}`);
+                        ws.getCell(`B${rNum}`).value = tpItem.desc;
+                        ws.getCell(`B${rNum}`).font = { name: 'Calibri', size: 9.5, color: { argb: 'FF334155' } };
+                        ws.getCell(`B${rNum}`).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+                        ws.getRow(rNum).height = 18;
+                    });
+                }
+            });
+
+            // Buat Buffer & Trigger Download Browser
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const fileName = `Rekap_Nilai_${sanitizeFileNamePart(guruName)}.xlsx`;
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+            showToast(`Berhasil mengunduh ${fileName} (${selectedIndices.length} sheet rombel).`, 'success');
+            closeModal('modalUnduhRekap');
+        } catch (err) {
+            console.error('Gagal mengekspor Excel Rekap Nilai:', err);
+            showToast('Gagal membuat file Excel: ' + (err.message || 'Error'), 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '📥 Unduh Excel (.xlsx)';
+            updateUnduhRekapSelectionSummary();
+        }
+    }
+
+    // =========================================================================
+    // 9. NAVIGASI & LOGOUT DENGAN POPUP PERINGATAN (REDIRECT KE login.html)
+    // =========================================================================
+    function goToInputNilaiPage() {
+        window.location.href = 'input_nilai.html';
+    }
+
+    function openLogoutModal() {
+        openModal('modalLogout');
+    }
+
+    function confirmLogout() {
+        sessionStorage.removeItem('guruData');
+        sessionStorage.removeItem('nilaiProContext');
+        window.location.href = 'login.html';
+    }
+
+    // =========================================================================
+    // 10. FITUR TRAKTIR KOPI PENGEMBANG (KHUSUS AKUN SEKOLAH FREE)
+    //     Tombol & Pop-up identik dengan halaman Admin Dashboard
+    // =========================================================================
+    function updateTraktirKopiVisibility(isFree) {
+        const btnTraktir = document.getElementById('btnTraktirKopi');
+        if (!btnTraktir) return;
+        if (isFree === true) {
+            btnTraktir.classList.remove('hidden');
+        } else {
+            btnTraktir.classList.add('hidden');
+        }
+    }
+
+    function renderTraktirQrCode() {
+        const container = document.getElementById('traktirQrContainer');
+        if (!container) return;
+        const qrPayload = 'https://wa.me/6285214596325?text=' + encodeURIComponent('Halo Pengembang Sistem Nilai Pro, saya ingin traktir kopi untuk mendukung aplikasi ini.');
+        container.innerHTML = '';
+
+        if (typeof QRCode !== 'undefined') {
+            try {
+                new QRCode(container, {
+                    text: qrPayload,
+                    width: 185,
+                    height: 185,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+                const qrCanvas = container.querySelector('canvas');
+                const qrImg = container.querySelector('img');
+                if (qrCanvas && qrImg) {
+                    qrCanvas.style.display = 'none';
+                    qrImg.style.display = 'block';
+                }
+                return;
+            } catch (err) {
+                container.innerHTML = '';
+            }
+        }
+        const fallbackImg = document.createElement('img');
+        fallbackImg.alt = 'QR Code Traktir Kopi';
+        fallbackImg.width = 185;
+        fallbackImg.height = 185;
+        fallbackImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=4&data=${encodeURIComponent(qrPayload)}`;
+        container.appendChild(fallbackImg);
+    }
+
+    function openTraktirKopiModal() {
+        renderTraktirQrCode();
+        openModal('traktirKopiModal');
+    }
+
+    function closeTraktirKopiModal() {
+        closeModal('traktirKopiModal');
+    }
+
+    function handleTraktirOverlayClick(event) {
+        if (event.target && event.target.id === 'traktirKopiModal') {
+            closeTraktirKopiModal();
+        }
+    }
+
+    function copyDonasiNumber() {
+        const rawNumber = '085214596325';
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(rawNumber).then(() => {
+                showToast('Nomor 0852-1459-6325 berhasil disalin!', 'success');
+            }).catch(() => {
+                fallbackCopyText(rawNumber);
+            });
+        } else {
+            fallbackCopyText(rawNumber);
+        }
+    }
+
+    function fallbackCopyText(text) {
+        const tempInput = document.createElement('input');
+        tempInput.value = text;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        showToast('Nomor 0852-1459-6325 berhasil disalin!', 'success');
+    }
+</script>
+</body>
+</html>

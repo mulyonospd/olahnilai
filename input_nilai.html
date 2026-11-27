@@ -1,0 +1,3478 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Nilai Siswa - Sistem Nilai Pro</title>
+
+    <!-- LIBRARY SUPABASE, SHEETJS (EXCEL XLSX) & KONFIGURASI PROYEK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="config.js"></script>
+
+    <style>
+        /* =====================================================================
+           1. VARIABEL TEMA (DARK MODE DEFAULT & LIGHT MODE - SELARAS DASHBOARD)
+           ===================================================================== */
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --primary-soft: rgba(59, 130, 246, 0.16);
+            --success: #10b981;
+            --success-hover: #059669;
+            --success-soft: rgba(16, 185, 129, 0.16);
+            --warning: #f59e0b;
+            --warning-soft: rgba(245, 158, 11, 0.22);
+            --warning-border: rgba(245, 158, 11, 0.65);
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --danger-soft: rgba(239, 68, 68, 0.22);
+            --danger-border: rgba(239, 68, 68, 0.65);
+
+            --bg-body: linear-gradient(135deg, #070b14 0%, #111827 50%, #0f172a 100%);
+            --header-bg: linear-gradient(135deg, #020617 0%, #1e1b4b 55%, #0f172a 100%);
+            --card-bg: rgba(30, 41, 59, 0.94);
+            --card-header-bg: rgba(15, 23, 42, 0.85);
+            --surface-soft: rgba(15, 23, 42, 0.6);
+            --row-hover: rgba(59, 130, 246, 0.10);
+            --table-sticky-bg: #162032;
+            --tfoot-bg: #0f172a;
+
+            --rank-1-bg: rgba(250, 204, 21, 0.14);
+            --rank-2-bg: rgba(203, 213, 225, 0.12);
+            --rank-3-bg: rgba(217, 119, 6, 0.14);
+
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --input-bg: #0f172a;
+            --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.35);
+            --scrollbar-thumb: #475569;
+        }
+
+        [data-theme="light"] {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --primary-soft: rgba(37, 99, 235, 0.12);
+            --success: #059669;
+            --success-hover: #047857;
+            --success-soft: rgba(5, 150, 105, 0.12);
+            --warning: #b45309;
+            --warning-soft: #fef3c7;
+            --warning-border: #f59e0b;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --danger-soft: #fee2e2;
+            --danger-border: #ef4444;
+
+            --bg-body: linear-gradient(135deg, #e0e7ff 0%, #f1f5f9 50%, #dbeafe 100%);
+            --header-bg: linear-gradient(135deg, #1e3a8a 0%, #312e81 55%, #1e293b 100%);
+            --card-bg: rgba(255, 255, 255, 0.96);
+            --card-header-bg: #f8fafc;
+            --surface-soft: #f1f5f9;
+            --row-hover: rgba(37, 99, 235, 0.06);
+            --table-sticky-bg: #ffffff;
+            --tfoot-bg: #eef2ff;
+
+            --rank-1-bg: rgba(254, 240, 138, 0.45);
+            --rank-2-bg: rgba(226, 232, 240, 0.55);
+            --rank-3-bg: rgba(254, 215, 170, 0.45);
+
+            --border-color: #cbd5e1;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --input-bg: #ffffff;
+            --shadow-card: 0 8px 24px rgba(15, 23, 42, 0.08);
+            --scrollbar-thumb: #94a3b8;
+        }
+
+        /* =====================================================================
+           2. RESET & LAYOUT UTAMA
+           ===================================================================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        html, body {
+            min-height: 100%;
+            background: var(--bg-body);
+            color: var(--text-main);
+        }
+
+        .app-shell {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding: 12px 16px 14px 16px;
+            gap: 10px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 999px;
+        }
+
+        /* =====================================================================
+           3. HEADER APLIKASI
+           ===================================================================== */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: var(--header-bg);
+            padding: 13px 20px;
+            border-radius: 14px;
+            color: #ffffff;
+            box-shadow: var(--shadow-card);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .brand-title h1 {
+            font-size: 1.32rem;
+            font-weight: 800;
+            line-height: 1.2;
+            color: #ffffff;
+        }
+
+        .brand-title .school-sub {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            margin-top: 2px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .academic-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            padding: 7px 12px;
+            border-radius: 9px;
+            font-size: 0.83rem;
+            font-weight: 600;
+            color: #f8fafc;
+        }
+
+        /* =====================================================================
+           4. TOMBOL & KOMPONEN UMUM
+           ===================================================================== */
+        button, .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: var(--primary);
+            color: #ffffff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 9px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.84rem;
+            transition: background 0.18s, transform 0.12s, opacity 0.18s;
+            white-space: nowrap;
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.48;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-success {
+            background: var(--success);
+        }
+        .btn-success:hover:not(:disabled) {
+            background: var(--success-hover);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+        }
+        .btn-outline:hover:not(:disabled) {
+            background: var(--surface-soft);
+        }
+
+        .btn-header-back {
+            background: rgba(255, 255, 255, 0.14);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.26);
+        }
+        .btn-header-back:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.24);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: #ffffff;
+        }
+        .btn-danger:hover:not(:disabled) {
+            background: var(--danger-hover);
+        }
+
+        /* Tombol Template & Upload Nilai dibuat sewarna (seragam) */
+        .btn-template,
+        .btn-import {
+            background: var(--primary-soft);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+        .btn-template:hover:not(:disabled),
+        .btn-import:hover:not(:disabled) {
+            background: var(--primary);
+            color: #ffffff;
+        }
+
+        /* Tombol Finalisasi Nilai: 150% lebih besar, kontras tinggi & mudah terbaca */
+        .btn-finalize {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: #ffffff;
+            border: 1px solid rgba(251, 191, 36, 0.75);
+            padding: 12px 22px;
+            font-size: 1.08rem;
+            font-weight: 800;
+            letter-spacing: 0.25px;
+            border-radius: 11px;
+            min-height: 48px;
+            box-shadow: 0 6px 18px rgba(217, 119, 6, 0.35);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+        }
+        .btn-finalize:hover:not(:disabled) {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            box-shadow: 0 8px 22px rgba(217, 119, 6, 0.48);
+            transform: translateY(-1px);
+        }
+        .btn-finalize.is-finalized {
+            background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+            border-color: rgba(248, 113, 113, 0.8);
+            box-shadow: 0 6px 18px rgba(220, 38, 38, 0.38);
+        }
+        .btn-finalize.is-finalized:hover:not(:disabled) {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            box-shadow: 0 8px 22px rgba(220, 38, 38, 0.5);
+        }
+
+        .finalized-status-badge {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.55);
+            color: #a7f3d0;
+            padding: 6px 12px;
+            border-radius: 9px;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+        .finalized-status-badge.active {
+            display: inline-flex;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .badge-success { background: var(--success-soft); color: var(--success); }
+        .badge-warning { background: var(--warning-soft); color: var(--warning); }
+        .badge-danger  { background: var(--danger-soft);  color: var(--danger); }
+        .badge-neutral { background: rgba(148, 163, 184, 0.2); color: var(--text-muted); }
+
+        /* =====================================================================
+           5. PANEL ATAS 1 BARIS (DROPDOWN KELAS, DETAIL EDITABLE & AKSI)
+           ===================================================================== */
+        .control-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 12px 16px;
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .top-bar-row {
+            display: flex;
+            align-items: stretch;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .class-selector-box {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+            min-width: 220px;
+            flex: 1 1 230px;
+            max-width: 310px;
+        }
+
+        /* Judul setiap elemen dibuat rata tengah */
+        .mini-label {
+            font-size: 0.71rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.35px;
+            color: var(--text-muted);
+            text-align: center;
+            width: 100%;
+            display: block;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 9px;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-size: 0.86rem;
+            font-weight: 600;
+            outline: none;
+        }
+        .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-soft);
+        }
+
+        /* Strip Detail 1 Baris (Tingkat, Kelas, Mapel, KKM, Bobot, Min/Max) */
+        .meta-strip {
+            display: flex;
+            align-items: stretch;
+            flex-wrap: wrap;
+            gap: 8px;
+            flex: 3 1 520px;
+        }
+
+        .meta-pill {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            gap: 4px;
+            background: var(--surface-soft);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 6px 12px;
+            min-height: 54px;
+        }
+
+        .meta-value {
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: var(--text-main);
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        .meta-value.highlight {
+            color: var(--primary);
+        }
+
+        .inline-num-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            flex-wrap: nowrap;
+        }
+
+        .inline-sub-field {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        .mini-num-input {
+            width: 54px;
+            padding: 4px 6px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-size: 0.83rem;
+            font-weight: 700;
+            text-align: center;
+            outline: none;
+        }
+        .mini-num-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary-soft);
+        }
+        .mini-num-input.invalid {
+            border-color: var(--danger);
+            background: var(--danger-soft);
+        }
+        .mini-num-input:disabled {
+            opacity: 0.68;
+            cursor: not-allowed;
+            background: var(--surface-soft);
+        }
+
+        /* Kelompok Tombol Aksi Kanan (Simpan Nilai + Waktu, Template, Import/Refisi) */
+        .action-strip {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .save-btn-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .last-saved-text {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.2;
+            max-width: 155px;
+        }
+
+        /* Legend Warna & Info Skala */
+        .legend-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding-top: 8px;
+            border-top: 1px dashed var(--border-color);
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .legend-items {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .legend-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+        }
+
+        .dot-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            display: inline-block;
+            border: 1px solid transparent;
+        }
+        .swatch-empty { background: var(--warning-soft); border-color: var(--warning-border); }
+        .swatch-below { background: var(--danger-soft); border-color: var(--danger-border); }
+        .swatch-top1  { background: var(--rank-1-bg); border-color: #eab308; }
+
+        /* =====================================================================
+           6. CARD TABEL INPUT NILAI (RESPONSIF & STICKY HEADER/KOLOM)
+           ===================================================================== */
+        .table-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .table-scroll {
+            width: 100%;
+            overflow: auto;
+            max-height: calc(100vh - 260px);
+            min-height: 300px;
+        }
+
+        table.grade-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.83rem;
+        }
+
+        table.grade-table thead th {
+            background: var(--card-header-bg);
+            color: var(--text-main);
+            font-weight: 700;
+            text-align: center;
+            padding: 8px 7px;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 4;
+        }
+
+        table.grade-table thead tr.sub-header th {
+            top: 34px;
+            z-index: 3;
+            font-size: 0.78rem;
+            padding: 6px 6px;
+        }
+
+        table.grade-table th.sticky-col-no,
+        table.grade-table td.sticky-col-no {
+            position: sticky;
+            left: 0;
+            z-index: 3;
+            min-width: 42px;
+            width: 42px;
+            text-align: center;
+        }
+
+        table.grade-table th.sticky-col-name,
+        table.grade-table td.sticky-col-name {
+            position: sticky;
+            left: 42px;
+            z-index: 3;
+            min-width: 185px;
+            max-width: 240px;
+            text-align: left;
+            box-shadow: 2px 0 6px rgba(0, 0, 0, 0.14);
+        }
+
+        table.grade-table thead th.sticky-col-name {
+            text-align: center;
+        }
+
+        table.grade-table thead th.sticky-col-no,
+        table.grade-table thead th.sticky-col-name {
+            z-index: 6;
+            background: var(--card-header-bg);
+        }
+
+        table.grade-table tbody td {
+            padding: 5px 6px;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+            text-align: center;
+            background: transparent;
+        }
+
+        table.grade-table tbody td.sticky-col-no,
+        table.grade-table tbody td.sticky-col-name {
+            background: var(--table-sticky-bg);
+        }
+
+        table.grade-table tbody tr:hover td {
+            background: var(--row-hover);
+        }
+
+        /* Highlight Baris Peringkat 1, 2, 3 */
+        table.grade-table tbody tr.rank-row-1 td {
+            background: var(--rank-1-bg);
+        }
+        table.grade-table tbody tr.rank-row-2 td {
+            background: var(--rank-2-bg);
+        }
+        table.grade-table tbody tr.rank-row-3 td {
+            background: var(--rank-3-bg);
+        }
+
+        .student-name-cell {
+            font-weight: 600;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-left: 8px !important;
+            padding-right: 10px !important;
+        }
+
+        /* Input Sel Nilai Editable */
+        .cell-input {
+            width: 64px;
+            padding: 6px 5px;
+            border-radius: 7px;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-size: 0.84rem;
+            font-weight: 700;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.14s, background 0.14s, box-shadow 0.14s;
+        }
+
+        .cell-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary-soft);
+        }
+
+        /* Status Warna Sel: Kosong = Kuning, Di Bawah KKM = Merah */
+        .cell-input.cell-empty {
+            background: var(--warning-soft);
+            border-color: var(--warning-border);
+        }
+
+        .cell-input.cell-below-kkm {
+            background: var(--danger-soft);
+            border-color: var(--danger-border);
+            color: var(--danger);
+        }
+
+        .cell-input.cell-tambahan {
+            width: 66px;
+        }
+        .cell-input:disabled {
+            opacity: 0.74;
+            cursor: not-allowed;
+            filter: saturate(0.75);
+        }
+
+        /* Sel Hasil Perhitungan (Nilai Asli & Nilai Jadi) */
+        .calc-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 58px;
+            padding: 5px 8px;
+            border-radius: 7px;
+            font-weight: 800;
+            font-size: 0.84rem;
+            background: var(--surface-soft);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        .calc-pill.empty-pill {
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .calc-pill.below-kkm {
+            background: var(--danger-soft);
+            border-color: var(--danger-border);
+            color: var(--danger);
+        }
+
+        .calc-pill.final-good {
+            background: var(--success-soft);
+            border-color: rgba(16, 185, 129, 0.45);
+            color: var(--success);
+        }
+
+        /* Badge Peringkat */
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            min-width: 44px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+        .rank-1 { background: rgba(250, 204, 21, 0.28); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.55); }
+        .rank-2 { background: rgba(148, 163, 184, 0.25); color: var(--text-main); border: 1px solid rgba(148, 163, 184, 0.5); }
+        .rank-3 { background: rgba(217, 119, 6, 0.24); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.5); }
+        .rank-other { color: var(--text-muted); font-weight: 700; }
+
+        .desc-placeholder {
+            min-width: 170px;
+            color: var(--text-muted);
+            font-size: 0.76rem;
+            font-style: italic;
+        }
+
+        /* Baris Footer: Jumlah Nilai & Rata-rata */
+        table.grade-table tfoot td {
+            background: var(--tfoot-bg);
+            color: var(--text-main);
+            font-weight: 800;
+            padding: 8px 6px;
+            border-top: 2px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            text-align: center;
+            font-size: 0.82rem;
+            position: sticky;
+            bottom: 0;
+            z-index: 3;
+        }
+
+        table.grade-table tfoot tr.summary-sum-row td {
+            bottom: 35px;
+        }
+
+        table.grade-table tfoot tr.summary-avg-row td {
+            border-top: 1px solid var(--border-color);
+            bottom: 0;
+            color: var(--primary);
+        }
+
+        table.grade-table tfoot td.sticky-col-no,
+        table.grade-table tfoot td.sticky-col-name {
+            z-index: 5;
+            background: var(--tfoot-bg);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 36px 20px;
+            color: var(--text-muted);
+            font-size: 0.92rem;
+            line-height: 1.6;
+        }
+
+        /* =====================================================================
+           7. MODAL VALIDASI IMPORT & TOAST NOTIFIKASI
+           ===================================================================== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.74);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1050;
+            padding: 16px;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 580px;
+            max-height: 86vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+            overflow: hidden;
+            animation: popIn 0.16s ease-out;
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-header {
+            padding: 14px 18px;
+            background: var(--card-header-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 1.02rem;
+            font-weight: 800;
+        }
+
+        .modal-close {
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 1.35rem;
+            padding: 2px 8px;
+        }
+        .modal-close:hover {
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .modal-body {
+            padding: 16px 18px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .modal-footer {
+            padding: 12px 18px;
+            background: var(--card-header-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .error-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .error-list li {
+            background: var(--danger-soft);
+            border: 1px solid var(--danger-border);
+            color: var(--text-main);
+            border-radius: 9px;
+            padding: 8px 11px;
+            font-size: 0.83rem;
+            line-height: 1.45;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 78px;
+            right: 20px;
+            z-index: 1200;
+            background: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--primary);
+            border-left: 5px solid var(--primary);
+            padding: 12px 18px;
+            border-radius: 10px;
+            font-size: 0.86rem;
+            font-weight: 600;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+            display: none;
+            max-width: 420px;
+        }
+        .toast.show { display: block; animation: popIn 0.18s ease-out; }
+        .toast.error { border-color: var(--danger); border-left-color: var(--danger); }
+        .toast.success { border-color: var(--success); border-left-color: var(--success); }
+
+        /* =====================================================================
+           8. PANEL FOOTER 1 BARIS (GANTI TEMA, KETERANGAN 2 BARIS & AKSI KANAN)
+           ===================================================================== */
+        .footer-panel {
+            position: sticky;
+            bottom: 8px;
+            z-index: 90;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 13px;
+            padding: 8px 14px;
+            box-shadow: var(--shadow-card);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px 14px;
+        }
+
+        .footer-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            flex: 1 1 auto;
+            min-width: 260px;
+        }
+
+        .btn-theme-footer {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--surface-soft);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 7px 13px;
+            border-radius: 999px;
+            font-size: 0.81rem;
+            font-weight: 700;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .btn-theme-footer:hover:not(:disabled) {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+        }
+
+        .footer-legend-stack {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 3px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.25;
+        }
+
+        .footer-legend-stack .legend-items {
+            gap: 12px;
+        }
+
+        .footer-format-line {
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .footer-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .footer-actions .save-btn-wrap {
+            gap: 2px;
+        }
+
+        .footer-actions .last-saved-text {
+            font-size: 0.67rem;
+            max-width: 145px;
+        }
+
+        /* =====================================================================
+           8B. KOMPONEN MODAL KONFIRMASI MODERN (UNSAVED, FINALISASI, BUKA)
+           ===================================================================== */
+        .modal-box.modal-compact {
+            max-width: 470px;
+        }
+
+        .modal-callout {
+            display: flex;
+            align-items: flex-start;
+            gap: 11px;
+            padding: 12px 13px;
+            border-radius: 11px;
+            font-size: 0.86rem;
+            line-height: 1.5;
+            border: 1px solid var(--border-color);
+            background: var(--surface-soft);
+            color: var(--text-main);
+        }
+        .modal-callout.callout-warning {
+            background: var(--warning-soft);
+            border-color: var(--warning-border);
+        }
+        .modal-callout.callout-danger {
+            background: var(--danger-soft);
+            border-color: var(--danger-border);
+        }
+        .modal-callout-icon {
+            font-size: 1.35rem;
+            line-height: 1;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .modal-class-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 11px;
+            border-radius: 8px;
+            background: var(--primary-soft);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            color: var(--primary);
+            font-size: 0.84rem;
+            font-weight: 700;
+            align-self: flex-start;
+        }
+
+        .access-code-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 4px;
+        }
+        .access-code-field label {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .access-code-input {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1.5px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-align: center;
+            outline: none;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+        .access-code-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-soft);
+        }
+        .access-code-error {
+            display: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--danger);
+        }
+        .access-code-error.show {
+            display: block;
+        }
+
+        /* =====================================================================
+           9. RESPONSIF LAYAR TABLET & HP
+           ===================================================================== */
+        @media (max-width: 900px) {
+            .app-shell {
+                padding: 10px 10px 14px 10px;
+            }
+            .class-selector-box {
+                max-width: none;
+                flex: 1 1 100%;
+            }
+            .meta-strip {
+                flex: 1 1 100%;
+            }
+            .footer-panel {
+                position: static;
+                padding: 10px 12px;
+            }
+            .footer-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
+            .btn-finalize {
+                width: 100%;
+            }
+            .table-scroll {
+                max-height: 68vh;
+            }
+            table.grade-table th.sticky-col-name,
+            table.grade-table td.sticky-col-name {
+                min-width: 145px;
+                max-width: 165px;
+            }
+        }
+
+        @media (max-width: 540px) {
+            .page-header {
+                padding: 12px 14px;
+            }
+            .brand-title h1 {
+                font-size: 1.12rem;
+            }
+            .meta-pill {
+                flex: 1 1 calc(50% - 8px);
+            }
+            .mini-num-input {
+                width: 48px;
+            }
+            .cell-input {
+                width: 56px;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- =========================================================================
+     STRUKTUR UTAMA HALAMAN INPUT NILAI
+     ========================================================================= -->
+<div class="app-shell">
+
+    <!-- A. HEADER HALAMAN -->
+    <header class="page-header">
+        <div class="header-left">
+            <button type="button" class="btn-header-back" onclick="handleBackToDashboard()">
+                ← Dashboard Guru
+            </button>
+            <div class="brand-title">
+                <h1>Input Nilai Siswa</h1>
+                <div class="school-sub" id="schoolAndGuruSubtitle">Memuat informasi sekolah & guru...</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="finalized-status-badge" id="finalizedStatusBadge">
+                🔒 Sudah Finalisasi (Tampil di Legger)
+            </div>
+            <div class="academic-badge" id="academicPeriodDisplay">
+                📅 Memuat Tahun Ajaran & Semester...
+            </div>
+        </div>
+    </header>
+
+    <!-- B. PANEL ATAS 1 BARIS: PILIH KELAS, DETAIL EDITABLE & TOMBOL AKSI -->
+    <section class="control-panel">
+        <div class="top-bar-row">
+
+            <!-- Dropdown Pilihan Kelas (Hanya kelas yang sudah memiliki TP yang aktif) -->
+            <div class="class-selector-box">
+                <label class="mini-label" for="classSelect">Pilih Kelas & Mapel</label>
+                <select id="classSelect" class="form-select" onchange="onSelectClassChange(this.value)">
+                    <option value="">Memuat daftar kelas...</option>
+                </select>
+            </div>
+
+            <!-- Detail 1 Baris: Tingkat, Nama Kelas, Mapel, KKM, Bobot, Nilai Min & Max -->
+            <div class="meta-strip">
+                <div class="meta-pill">
+                    <span class="mini-label">Tingkat</span>
+                    <span class="meta-value" id="metaTingkat">-</span>
+                </div>
+                <div class="meta-pill">
+                    <span class="mini-label">Nama Kelas</span>
+                    <span class="meta-value highlight" id="metaRombel">-</span>
+                </div>
+                <div class="meta-pill">
+                    <span class="mini-label">Mapel</span>
+                    <span class="meta-value" id="metaMapel">-</span>
+                </div>
+
+                <!-- KKM Editable -->
+                <div class="meta-pill">
+                    <span class="mini-label">KKM (Edit)</span>
+                    <div class="inline-num-group">
+                        <input type="text" inputmode="decimal" id="inputKkm" class="mini-num-input" value="75"
+                               oninput="onConfigInputChange('kkm', this)" onblur="normalizeConfigInput('kkm', this)"
+                               title="Kriteria Ketuntasan Minimal">
+                    </div>
+                </div>
+
+                <!-- Bobot Editable (UH, PSTS, PSAS) -->
+                <div class="meta-pill">
+                    <span class="mini-label">Bobot % (UH / PSTS / PSAS)</span>
+                    <div class="inline-num-group">
+                        <label class="inline-sub-field">UH
+                            <input type="text" inputmode="decimal" id="inputBobotUh" class="mini-num-input" value="50"
+                                   oninput="onConfigInputChange('bobot_uh', this)" onblur="normalizeConfigInput('bobot_uh', this)">
+                        </label>
+                        <label class="inline-sub-field">PSTS
+                            <input type="text" inputmode="decimal" id="inputBobotPsts" class="mini-num-input" value="25"
+                                   oninput="onConfigInputChange('bobot_psts', this)" onblur="normalizeConfigInput('bobot_psts', this)">
+                        </label>
+                        <label class="inline-sub-field">PSAS
+                            <input type="text" inputmode="decimal" id="inputBobotPsas" class="mini-num-input" value="25"
+                                   oninput="onConfigInputChange('bobot_psas', this)" onblur="normalizeConfigInput('bobot_psas', this)">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Nilai Min & Max Editable (Pengkatrolan) -->
+                <div class="meta-pill">
+                    <span class="mini-label">Katrol (Min / Max)</span>
+                    <div class="inline-num-group">
+                        <label class="inline-sub-field">Min
+                            <input type="text" inputmode="decimal" id="inputNilaiMin" class="mini-num-input" value="75"
+                                   oninput="onConfigInputChange('nilai_min', this)" onblur="normalizeConfigInput('nilai_min', this)">
+                        </label>
+                        <label class="inline-sub-field">Max
+                            <input type="text" inputmode="decimal" id="inputNilaiMax" class="mini-num-input" value="95"
+                                   oninput="onConfigInputChange('nilai_max', this)" onblur="normalizeConfigInput('nilai_max', this)">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- C. TABEL INPUT NILAI SISWA -->
+    <main class="table-card">
+        <div class="table-scroll" id="gradeTableWrapper">
+            <div class="empty-state">Memuat data kelas dan siswa...</div>
+        </div>
+    </main>
+
+    <!-- D. PANEL FOOTER 1 BARIS: GANTI TEMA, KETERANGAN 2 BARIS & TOMBOL AKSI + FINALISASI -->
+    <footer class="footer-panel">
+        <!-- Kiri: Tombol Ganti Tema + Keterangan 2 Baris -->
+        <div class="footer-left">
+            <button type="button" class="btn-theme-footer" id="themeToggleBtn" onclick="toggleTheme()" title="Ganti Tema Terang / Gelap">
+                <span id="themeIcon">☀️</span>
+                <span id="themeText">Mode Terang</span>
+            </button>
+
+            <div class="footer-legend-stack">
+                <!-- Baris 1: Keterangan Warna -->
+                <div class="legend-items">
+                    <span class="legend-chip"><span class="dot-swatch swatch-empty"></span> Kosong / Belum Diisi</span>
+                    <span class="legend-chip"><span class="dot-swatch swatch-below"></span> Di Bawah KKM</span>
+                    <span class="legend-chip"><span class="dot-swatch swatch-top1"></span> Peringkat 1 – 3 Tertinggi</span>
+                </div>
+                <!-- Baris 2: Skala & Pembulatan -->
+                <div class="footer-format-line" id="globalFormatInfo">
+                    Skala Nilai: 0–100 (Puluhan) • Pembulatan: Memuat...
+                </div>
+            </div>
+        </div>
+
+        <!-- Kanan: Simpan Nilai, Template, Upload Nilai & Finalisasi Nilai (150% Lebih Besar) -->
+        <div class="footer-actions">
+            <div class="save-btn-wrap">
+                <button type="button" class="btn-success" id="btnSimpanNilai" disabled onclick="saveCurrentRombelGrades()">
+                    💾 Simpan Nilai
+                </button>
+                <span class="last-saved-text" id="lastSavedText">Belum ada simpan</span>
+            </div>
+
+            <button type="button" class="btn-template" id="btnDownloadTemplate" disabled onclick="downloadExcelTemplate()" title="Unduh template Excel format Nama Mapel - Nama Rombel.xlsx">
+                📄 Template
+            </button>
+
+            <button type="button" class="btn-import" id="btnImportNilai" disabled onclick="triggerImportExcel()" title="Upload file template Excel nilai rombel ini">
+                📤 Upload Nilai
+            </button>
+            <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="display:none;" onchange="handleExcelFileSelected(event)">
+
+            <button type="button" class="btn-finalize" id="btnFinalisasiNilai" disabled onclick="onFinalisasiButtonClick()" title="Finalisasi nilai untuk ditampilkan di halaman Legger Nilai">
+                🔒 Finalisasi Nilai
+            </button>
+        </div>
+    </footer>
+
+</div>
+
+<!-- =========================================================================
+     POPUP VALIDASI ERROR IMPORT EXCEL
+     ========================================================================= -->
+<div class="modal-overlay" id="modalImportError">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>⚠️ Import Nilai Ditolak — Data Tidak Sesuai</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modalImportError')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:0.86rem; color:var(--text-muted); line-height:1.5;">
+                File Excel tidak dapat diproses karena ditemukan ketidaksesuaian berikut. Perbaiki file template Anda lalu lakukan import ulang:
+            </p>
+            <ul class="error-list" id="importErrorList"></ul>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-outline" onclick="closeModal('modalImportError')">Tutup</button>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST NOTIFIKASI -->
+<div class="toast" id="toastBox"></div>
+
+<!-- =========================================================================
+     MODAL KONFIRMASI MODERN: PERUBAHAN BELUM DISIMPAN (TOMBOL KEMBALI / PINDAH KELAS)
+     ========================================================================= -->
+<div class="modal-overlay" id="modalUnsavedWarning">
+    <div class="modal-box modal-compact">
+        <div class="modal-header">
+            <h3>⚠️ Perubahan Nilai Belum Disimpan</h3>
+            <button type="button" class="modal-close" onclick="cancelUnsavedNavigation()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-callout callout-warning">
+                <span class="modal-callout-icon">📝</span>
+                <div id="unsavedWarningMessage">
+                    Ada perubahan nilai atau pengaturan yang belum disimpan. Jika Anda keluar sekarang, perubahan tersebut akan hilang.
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer" style="flex-wrap:wrap;">
+            <button type="button" class="btn-outline" onclick="cancelUnsavedNavigation()">Batal</button>
+            <button type="button" class="btn-danger" onclick="proceedWithoutSaving()">Keluar Tanpa Simpan</button>
+            <button type="button" class="btn-success" id="btnSaveAndProceed" onclick="saveAndProceedNavigation()">💾 Simpan & Lanjutkan</button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     MODAL KONFIRMASI FINALISASI NILAI
+     ========================================================================= -->
+<div class="modal-overlay" id="modalConfirmFinalisasi">
+    <div class="modal-box modal-compact">
+        <div class="modal-header">
+            <h3>🔒 Konfirmasi Finalisasi Nilai</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modalConfirmFinalisasi')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-class-chip" id="finalisasiClassChip">Kelas & Mapel</div>
+            <div class="modal-callout callout-warning">
+                <span class="modal-callout-icon">📢</span>
+                <div>
+                    <strong>Perhatian:</strong> Finalisasi akan <strong>memunculkan nilai kelas ini di halaman Legger Nilai</strong> dan mengunci (<em>disable</em>) seluruh kotak isian nilai pada kelas ini agar tidak berubah secara tidak sengaja.
+                </div>
+            </div>
+            <p id="finalisasiUnsavedNote" style="display:none; font-size:0.82rem; color:var(--primary); font-weight:600;">
+                ℹ️ Perubahan nilai yang belum disimpan akan otomatis disimpan terlebih dahulu sebelum finalisasi.
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-outline" onclick="closeModal('modalConfirmFinalisasi')">Batal</button>
+            <button type="button" class="btn-success" id="btnConfirmFinalisasi" onclick="confirmFinalizeCurrentClass()">🔒 Ya, Finalisasi Sekarang</button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     MODAL BUKA FINALISASI NILAI (VERIFIKASI KODE AKSES SEKOLAH)
+     ========================================================================= -->
+<div class="modal-overlay" id="modalBukaFinalisasi">
+    <div class="modal-box modal-compact">
+        <div class="modal-header">
+            <h3>🔓 Buka Finalisasi Nilai</h3>
+            <button type="button" class="modal-close" onclick="closeModal('modalBukaFinalisasi')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-class-chip" id="bukaFinalisasiClassChip">Kelas & Mapel</div>
+            <div class="modal-callout callout-danger">
+                <span class="modal-callout-icon">⚠️</span>
+                <div>
+                    <strong>Peringatan:</strong> Jika membuka finalisasi, <strong>nilai kelas ini tidak akan muncul lagi di halaman Legger Nilai</strong> sampai Anda melakukan Finalisasi Nilai kembali.
+                </div>
+            </div>
+            <div class="access-code-field">
+                <label for="inputKodeAksesSekolah">Masukkan Kode Akses Sekolah untuk konfirmasi:</label>
+                <input type="text" id="inputKodeAksesSekolah" class="access-code-input" maxlength="12"
+                       placeholder="CONTOH: ABCDEF" autocomplete="off"
+                       onkeydown="if(event.key==='Enter'){ event.preventDefault(); confirmUnfinalizeCurrentClass(); }">
+                <span class="access-code-error" id="kodeAksesErrorText">Kode Akses Sekolah tidak sesuai!</span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-outline" onclick="closeModal('modalBukaFinalisasi')">Batal</button>
+            <button type="button" class="btn-danger" id="btnConfirmBukaFinalisasi" onclick="confirmUnfinalizeCurrentClass()">🔓 Verifikasi & Buka Finalisasi</button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     SCRIPT LOGIKA HALAMAN INPUT NILAI SISWA
+     ========================================================================= -->
+<script>
+    // =========================================================================
+    // 1. INISIALISASI KLIEN SUPABASE & STATE GLOBAL
+    // =========================================================================
+    function getSupabaseClient() {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) return supabaseClient;
+        if (typeof _supabase !== 'undefined' && _supabase) return _supabase;
+        if (window.supabaseClient) return window.supabaseClient;
+        if (typeof supabase !== 'undefined' && typeof supabase.from === 'function') return supabase;
+        if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined' && window.supabase) {
+            return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+        return null;
+    }
+
+    const db = getSupabaseClient();
+
+    const state = {
+        guruSession: null,
+        guruRecord: null,
+        myGuruIds: [],
+        schoolId: null,
+        activeYear: null,
+        activeSemester: null,
+        allGurus: [],
+        allMapels: [],
+        allRombels: [],
+        myAssignments: [],
+        myCps: [],
+        variabelGlobal: null,
+        gradingConfig: null,
+
+        // Daftar pilihan kelas (kombinasi rombel + mapel)
+        classOptions: [],
+        selectedOptionKey: null,
+
+        // Data rombel yang sedang aktif ditampilkan
+        currentRombel: null,
+        currentMapel: null,
+        currentCps: [],
+        currentStudents: [],
+        existingGradesDb: [],
+
+        // Konfigurasi aktif (editable di panel atas & ikut tersimpan saat klik Simpan)
+        config: {
+            kkm: 75,
+            bobot_uh: 50,
+            bobot_psts: 25,
+            bobot_psas: 25,
+            nilai_min: 75,
+            nilai_max: 95
+        },
+
+        // Aturan skala & pembulatan dari Admin Sekolah (variabel_global / grading_configs)
+        scaleMax: 100,
+        scaleLabel: '0–100 (Puluhan)',
+        decimalPlaces: 0,
+
+        // Matrix nilai per student_id:
+        // { [studentId]: { uh: { [cpId]: number|null }, psts: number|null, psas: number|null, tambahan: number|null } }
+        scoresByStudent: {},
+
+        // Hasil kalkulasi per student_id:
+        // { [studentId]: { hasNilaiAsli, nilaiAsli, nilaiKatrol, nilaiJadi, rank } }
+        calcByStudent: {},
+
+        // Status perubahan, finalisasi kelas aktif & modal konfirmasi navigasi
+        hasUnsavedChanges: false,
+        hasImportedOrExisting: false,
+        currentAssignment: null,
+        isCurrentClassFinalized: false,
+        pendingNavConfirm: null,
+        pendingNavCancel: null
+    };
+
+    // =========================================================================
+    // 2. MANAJEMEN TEMA (TERANG / GELAP)
+    // =========================================================================
+    function initTheme() {
+        const saved = localStorage.getItem('nilaiProTheme') || localStorage.getItem('theme') || 'dark';
+        applyTheme(saved);
+    }
+
+    function applyTheme(theme) {
+        const valid = theme === 'light' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', valid);
+        localStorage.setItem('nilaiProTheme', valid);
+        localStorage.setItem('theme', valid);
+        document.getElementById('themeIcon').textContent = valid === 'dark' ? '☀️' : '🌙';
+        document.getElementById('themeText').textContent = valid === 'dark' ? 'Mode Terang' : 'Mode Gelap';
+    }
+
+    function toggleTheme() {
+        applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    }
+
+    // =========================================================================
+    // 3. UTILITAS UI, FORMAT ANGKA & VALIDASI
+    // =========================================================================
+    let toastTimer = null;
+    function showToast(message, type = 'info') {
+        const el = document.getElementById('toastBox');
+        el.textContent = message;
+        el.className = 'toast show ' + (type === 'error' ? 'error' : type === 'success' ? 'success' : '');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove('show'), 4200);
+    }
+
+    function openModal(id) {
+        document.getElementById(id).classList.add('active');
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('active');
+    }
+
+    function escapeHtml(str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function parseJsonObjectSafe(raw) {
+        if (!raw) return {};
+        if (typeof raw === 'object' && !Array.isArray(raw)) return { ...raw };
+        if (typeof raw === 'string') {
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+            } catch (_) {}
+        }
+        return {};
+    }
+
+    function formatDateTimeId(isoString) {
+        if (!isoString) return 'Belum ada simpan';
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return 'Belum ada simpan';
+        return 'Disimpan: ' + d.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        }) + ' ' + d.toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    function roundBySetting(num) {
+        if (num === null || num === undefined || isNaN(num)) return 0;
+        const factor = Math.pow(10, state.decimalPlaces);
+        return Math.round((Number(num) + Number.EPSILON) * factor) / factor;
+    }
+
+    function formatDisplayNumber(num) {
+        if (num === null || num === undefined || isNaN(num)) return '-';
+        const rounded = roundBySetting(num);
+        return state.decimalPlaces > 0 ? rounded.toFixed(state.decimalPlaces) : String(Math.round(rounded));
+    }
+
+    function isValidScore(val) {
+        return val !== null && val !== undefined && val !== '' && Number.isFinite(Number(val));
+    }
+
+    function parseStrictNumber(raw) {
+        if (raw === null || raw === undefined) return { empty: true, valid: true, value: null };
+        const str = String(raw).trim().replace(',', '.');
+        if (str === '') return { empty: true, valid: true, value: null };
+        // Hanya menerima angka bulat atau desimal (opsional tanda minus untuk nilai tambahan)
+        if (!/^-?\d+(\.\d+)?$/.test(str)) {
+            return { empty: false, valid: false, value: null };
+        }
+        const num = Number(str);
+        if (!Number.isFinite(num)) {
+            return { empty: false, valid: false, value: null };
+        }
+        return { empty: false, valid: true, value: num };
+    }
+
+    function setUnsavedChanges(flag) {
+        state.hasUnsavedChanges = Boolean(flag);
+        const btn = document.getElementById('btnSimpanNilai');
+        if (btn) {
+            btn.disabled = !state.hasUnsavedChanges || !state.currentRombel || state.isCurrentClassFinalized;
+        }
+    }
+
+    function updateImportButtonLabel() {
+        const btn = document.getElementById('btnImportNilai');
+        if (!btn) return;
+        btn.disabled = !state.currentRombel || state.isCurrentClassFinalized;
+        btn.textContent = '📤 Upload Nilai';
+        btn.title = state.isCurrentClassFinalized
+            ? 'Kelas sudah difinalisasi. Buka finalisasi terlebih dahulu untuk mengubah nilai.'
+            : 'Upload file Excel untuk mengisi atau memperbarui nilai rombel ini';
+    }
+
+    function applyFinalizationUIState() {
+        const hasClass = Boolean(state.currentRombel && state.currentMapel);
+        const isLocked = hasClass && Boolean(state.isCurrentClassFinalized);
+
+        // Kunci/buka input konfigurasi panel atas (KKM, Bobot, Katrol) khusus kelas ini
+        const configIds = ['inputKkm', 'inputBobotUh', 'inputBobotPsts', 'inputBobotPsas', 'inputNilaiMin', 'inputNilaiMax'];
+        configIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = !hasClass || isLocked;
+        });
+
+        // Kunci/buka seluruh kotak isian nilai di tabel kelas yang sedang tampil saja
+        document.querySelectorAll('#gradeTableWrapper .cell-input').forEach(inp => {
+            inp.disabled = isLocked;
+        });
+
+        // Tombol Simpan, Template & Upload Nilai
+        const btnSimpan = document.getElementById('btnSimpanNilai');
+        const btnTemplate = document.getElementById('btnDownloadTemplate');
+        if (btnSimpan) btnSimpan.disabled = !hasClass || isLocked || !state.hasUnsavedChanges;
+        if (btnTemplate) btnTemplate.disabled = !hasClass;
+        updateImportButtonLabel();
+
+        // Tombol Finalisasi Nilai / Buka Finalisasi (150% lebih besar)
+        const btnFin = document.getElementById('btnFinalisasiNilai');
+        if (btnFin) {
+            btnFin.disabled = !hasClass;
+            if (isLocked) {
+                btnFin.classList.add('is-finalized');
+                btnFin.textContent = '🔓 Buka Finalisasi';
+                btnFin.title = 'Klik untuk membuka kunci finalisasi (memerlukan Kode Akses Sekolah)';
+            } else {
+                btnFin.classList.remove('is-finalized');
+                btnFin.textContent = '🔒 Finalisasi Nilai';
+                btnFin.title = 'Finalisasi nilai agar tampil di halaman Legger Nilai';
+            }
+        }
+
+        // Badge status finalisasi pada header
+        const statusBadge = document.getElementById('finalizedStatusBadge');
+        if (statusBadge) {
+            statusBadge.classList.toggle('active', isLocked);
+        }
+    }
+
+    function openUnsavedModal(message, onProceed, onCancel) {
+        state.pendingNavConfirm = typeof onProceed === 'function' ? onProceed : null;
+        state.pendingNavCancel = typeof onCancel === 'function' ? onCancel : null;
+        document.getElementById('unsavedWarningMessage').textContent = message;
+        const saveBtn = document.getElementById('btnSaveAndProceed');
+        if (saveBtn) {
+            saveBtn.style.display = state.isCurrentClassFinalized ? 'none' : 'inline-flex';
+            saveBtn.disabled = false;
+            saveBtn.textContent = '💾 Simpan & Lanjutkan';
+        }
+        openModal('modalUnsavedWarning');
+    }
+
+    function cancelUnsavedNavigation() {
+        closeModal('modalUnsavedWarning');
+        const cancelCb = state.pendingNavCancel;
+        state.pendingNavConfirm = null;
+        state.pendingNavCancel = null;
+        if (cancelCb) cancelCb();
+    }
+
+    function proceedWithoutSaving() {
+        closeModal('modalUnsavedWarning');
+        setUnsavedChanges(false);
+        const proceedCb = state.pendingNavConfirm;
+        state.pendingNavConfirm = null;
+        state.pendingNavCancel = null;
+        if (proceedCb) proceedCb();
+    }
+
+    async function saveAndProceedNavigation() {
+        const saveBtn = document.getElementById('btnSaveAndProceed');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Menyimpan...';
+        }
+        const savedOk = await saveCurrentRombelGrades();
+        if (!savedOk) {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Simpan & Lanjutkan';
+            }
+            return;
+        }
+        closeModal('modalUnsavedWarning');
+        const proceedCb = state.pendingNavConfirm;
+        state.pendingNavConfirm = null;
+        state.pendingNavCancel = null;
+        if (proceedCb) proceedCb();
+    }
+
+    function getLastSavedStorageKey() {
+        if (!state.currentRombel || !state.currentMapel) return null;
+        const semId = state.activeSemester ? state.activeSemester.id : 'sem';
+        return `lastSavedGrade_${state.schoolId}_${semId}_${state.guruRecord.id}_${state.currentRombel.id}_${state.currentMapel.id}`;
+    }
+
+    function renderLastSavedTimestamp() {
+        const el = document.getElementById('lastSavedText');
+        const key = getLastSavedStorageKey();
+        if (!key) {
+            el.textContent = 'Belum ada simpan';
+            return;
+        }
+        const savedIso = localStorage.getItem(key);
+        el.textContent = savedIso ? formatDateTimeId(savedIso) : 'Belum ada simpan';
+    }
+
+    function handleBackToDashboard() {
+        if (state.hasUnsavedChanges) {
+            openUnsavedModal(
+                'Ada perubahan nilai atau pengaturan yang belum disimpan. Anda dapat menyimpan terlebih dahulu atau keluar ke Dashboard Guru tanpa menyimpan.',
+                () => { window.location.href = 'guru_dashboard.html'; },
+                null
+            );
+            return;
+        }
+        window.location.href = 'guru_dashboard.html';
+    }
+
+    window.addEventListener('beforeunload', (e) => {
+        if (state.hasUnsavedChanges) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    // =========================================================================
+    // 4. INISIALISASI HALAMAN & AMBIL DATA MASTER DARI SUPABASE
+    // =========================================================================
+    document.addEventListener('DOMContentLoaded', async () => {
+        initTheme();
+
+        const rawSession = sessionStorage.getItem('guruData');
+        if (!rawSession) {
+            alert('Anda belum login! Mengalihkan ke halaman login...');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        try {
+            state.guruSession = JSON.parse(rawSession);
+        } catch (err) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        if (!db) {
+            showToast('Koneksi Supabase dari config.js tidak ditemukan.', 'error');
+            return;
+        }
+
+        await loadInitialMasterData();
+    });
+
+    function resolveGlobalScaleAndRounding() {
+        const vg = state.variabelGlobal;
+        const gc = state.gradingConfig;
+
+        // Tentukan jumlah angka desimal (0 = bulat, 1 = 1 digit, 2 = 2 digit)
+        let dec = 0;
+        if (vg && vg.jumlah_koma !== null && vg.jumlah_koma !== undefined && !isNaN(Number(vg.jumlah_koma))) {
+            dec = Math.max(0, Math.min(2, parseInt(vg.jumlah_koma, 10)));
+        } else if (gc && gc.decimal_places !== null && gc.decimal_places !== undefined && !isNaN(Number(gc.decimal_places))) {
+            dec = Math.max(0, Math.min(2, parseInt(gc.decimal_places, 10)));
+        } else if (vg && vg.format_nilai) {
+            const fmt = String(vg.format_nilai).toLowerCase();
+            if (fmt.includes('2')) dec = 2;
+            else if (fmt.includes('1')) dec = 1;
+            else dec = 0;
+        }
+        state.decimalPlaces = dec;
+
+        // Tentukan skala nilai (satuan 0-10 / 0-4 atau puluhan 0-100)
+        const scaleRaw = String((gc && gc.scale_type) || (vg && vg.format_nilai) || '').toLowerCase();
+        if (scaleRaw.includes('satuan') || scaleRaw.includes('0-10') || scaleRaw.includes('10')) {
+            if (!scaleRaw.includes('100')) {
+                state.scaleMax = 10;
+                state.scaleLabel = '0–10 (Satuan)';
+            } else {
+                state.scaleMax = 100;
+                state.scaleLabel = '0–100 (Puluhan)';
+            }
+        } else if (scaleRaw.includes('0-4') || scaleRaw.includes('skala 4')) {
+            state.scaleMax = 4;
+            state.scaleLabel = '0–4 (Satuan)';
+        } else {
+            state.scaleMax = 100;
+            state.scaleLabel = '0–100 (Puluhan)';
+        }
+
+        const decLabel = dec === 0 ? 'Angka Bulat' : `${dec} Digit Desimal`;
+        document.getElementById('globalFormatInfo').textContent =
+            `Skala Nilai: ${state.scaleLabel} • Pembulatan: ${decLabel}`;
+    }
+
+    async function loadInitialMasterData() {
+        try {
+            const s = state.guruSession;
+            state.schoolId = s.school_id;
+
+            // Cari record guru awal jika school_id belum ada di sesi
+            let guruQ = db.from('gurus').select('*');
+            if (s.school_id) guruQ = guruQ.eq('school_id', s.school_id);
+            else if (s.guru_id || s.id) guruQ = guruQ.eq('id', s.guru_id || s.id);
+            else if (s.user_id) guruQ = guruQ.eq('user_id', s.user_id);
+
+            const { data: initGurus } = await guruQ;
+            const matchedInit = (initGurus || []).find(g =>
+                (s.guru_id && g.id === s.guru_id) ||
+                (s.id && g.id === s.id) ||
+                (s.user_id && g.user_id === s.user_id) ||
+                (s.code && g.code && String(g.code).toUpperCase() === String(s.code).toUpperCase())
+            ) || (initGurus && initGurus[0]) || null;
+
+            if (!state.schoolId && matchedInit) state.schoolId = matchedInit.school_id;
+            if (!state.schoolId) {
+                showToast('ID Sekolah tidak ditemukan pada sesi login.', 'error');
+                return;
+            }
+
+            // Ambil Tahun Ajaran & Semester Aktif
+            const { data: years } = await db
+                .from('academic_years')
+                .select('*')
+                .eq('school_id', state.schoolId)
+                .eq('is_active', true)
+                .limit(1);
+            state.activeYear = years && years.length > 0 ? years[0] : null;
+
+            let semQ = db.from('semesters').select('*').eq('school_id', state.schoolId).eq('is_active', true);
+            if (state.activeYear) semQ = semQ.eq('academic_year_id', state.activeYear.id);
+            const { data: sems } = await semQ.limit(1);
+            state.activeSemester = sems && sems.length > 0 ? sems[0] : null;
+
+            const activeYearId = state.activeYear ? state.activeYear.id : null;
+            const semId = state.activeSemester ? state.activeSemester.id : null;
+
+            const yearText = state.activeYear ? state.activeYear.name : 'Tahun Ajaran Belum Aktif';
+            const semText = state.activeSemester ? state.activeSemester.name : 'Semester Belum Aktif';
+            document.getElementById('academicPeriodDisplay').textContent = `📅 ${yearText} • Semester ${semText}`;
+
+            // Ambil Master Data secara paralel
+            let rombelQ = db.from('rombels').select('*').eq('school_id', state.schoolId);
+            let mapelQ = db.from('mapels').select('*').eq('school_id', state.schoolId);
+            if (activeYearId) {
+                rombelQ = rombelQ.eq('academic_year_id', activeYearId);
+                mapelQ = mapelQ.eq('academic_year_id', activeYearId);
+            }
+            const assignQ = db.from('teaching_assignments').select('*').eq('school_id', state.schoolId);
+            const guruAllQ = db.from('gurus').select('*').eq('school_id', state.schoolId);
+            const varGlobalQ = db.from('variabel_global').select('*').eq('school_id', state.schoolId).limit(1);
+            const gradCfgQ = db.from('grading_configs').select('*').eq('school_id', state.schoolId).limit(1);
+            let cpQ = db.from('cps').select('*').eq('school_id', state.schoolId);
+            if (semId) cpQ = cpQ.eq('semester_id', semId);
+
+            const [
+                { data: rombelsData },
+                { data: mapelsData },
+                { data: assignData },
+                { data: gurusData },
+                { data: varGlobalData },
+                { data: gradCfgData },
+                { data: cpsData }
+            ] = await Promise.all([
+                rombelQ, mapelQ, assignQ, guruAllQ, varGlobalQ, gradCfgQ, cpQ.order('cp_number', { ascending: true })
+            ]);
+
+            state.allRombels = (rombelsData || []).sort((a, b) =>
+                String(a.tingkat).localeCompare(String(b.tingkat), 'id', { numeric: true }) ||
+                String(a.name).localeCompare(String(b.name), 'id', { numeric: true })
+            );
+            state.allMapels = (mapelsData || []).sort((a, b) => String(a.name).localeCompare(String(b.name), 'id'));
+            state.allGurus = gurusData || [];
+            state.variabelGlobal = varGlobalData && varGlobalData.length > 0 ? varGlobalData[0] : null;
+            state.gradingConfig = gradCfgData && gradCfgData.length > 0 ? gradCfgData[0] : null;
+
+            resolveGlobalScaleAndRounding();
+
+            // Identifikasi seluruh record milik guru yang login
+            const myGuruRecords = state.allGurus.filter(g => {
+                const sameId =
+                    (s.guru_id && g.id === s.guru_id) ||
+                    (s.id && g.id === s.id) ||
+                    (s.user_id && g.user_id && g.user_id === s.user_id) ||
+                    (s.code && g.code && String(g.code).toUpperCase() === String(s.code).toUpperCase());
+                if (!sameId) return false;
+                return !activeYearId || !g.academic_year_id || g.academic_year_id === activeYearId;
+            });
+
+            state.guruRecord =
+                myGuruRecords.find(g => activeYearId && g.academic_year_id === activeYearId) ||
+                myGuruRecords[0] ||
+                matchedInit || {
+                    id: s.guru_id || s.id || null,
+                    school_id: state.schoolId,
+                    name: s.display_name || s.name || 'Guru',
+                    code: s.code || '-'
+                };
+
+            const myGuruIdSet = new Set(myGuruRecords.map(g => g.id));
+            if (state.guruRecord.id) myGuruIdSet.add(state.guruRecord.id);
+            state.myGuruIds = Array.from(myGuruIdSet);
+
+            const schoolName = s.school_name || 'Sekolah';
+            const guruName = state.guruRecord.name || s.display_name || 'Guru';
+            document.getElementById('schoolAndGuruSubtitle').textContent = `${schoolName} • Guru: ${guruName}`;
+
+            // Gabungkan teaching_assignments + fallback gurus.mapel_id & rombel_ids
+            const validRombelSet = new Set(state.allRombels.map(r => r.id));
+            const validMapelSet = new Set(state.allMapels.map(m => m.id));
+            const keySet = new Set();
+            const myAssignList = [];
+
+            (assignData || []).forEach(a => {
+                if (!myGuruIdSet.has(a.guru_id)) return;
+                const matchYear = !activeYearId || !a.academic_year_id || a.academic_year_id === activeYearId;
+                const matchSem = !semId || !a.semester_id || a.semester_id === semId;
+                if (!matchYear || !matchSem) return;
+                if (!validRombelSet.has(a.rombel_id) || !validMapelSet.has(a.mapel_id)) return;
+                const key = `${a.rombel_id}__${a.mapel_id}`;
+                if (!keySet.has(key)) {
+                    keySet.add(key);
+                    myAssignList.push(a);
+                }
+            });
+
+            myGuruRecords.forEach(g => {
+                let rIds = [];
+                if (Array.isArray(g.rombel_ids)) rIds = g.rombel_ids;
+                else if (typeof g.rombel_ids === 'string' && g.rombel_ids.trim()) {
+                    try {
+                        const parsed = JSON.parse(g.rombel_ids);
+                        if (Array.isArray(parsed)) rIds = parsed;
+                    } catch (_) {}
+                }
+                if (g.mapel_id && validMapelSet.has(g.mapel_id) && rIds.length > 0) {
+                    rIds.forEach(rawId => {
+                        const rId = typeof rawId === 'object' && rawId !== null ? rawId.id : rawId;
+                        if (!validRombelSet.has(rId)) return;
+                        const key = `${rId}__${g.mapel_id}`;
+                        if (!keySet.has(key)) {
+                            keySet.add(key);
+                            myAssignList.push({
+                                rombel_id: rId,
+                                mapel_id: g.mapel_id,
+                                guru_id: g.id
+                            });
+                        }
+                    });
+                }
+            });
+
+            state.myAssignments = myAssignList;
+
+            // Filter CP milik guru sendiri (fallback ke data lama tanpa guru_id jika kolom tidak ada)
+            const allCps = cpsData || [];
+            const hasGuruIdCol = allCps.some(cp => cp.guru_id !== undefined && cp.guru_id !== null);
+            state.myCps = hasGuruIdCol
+                ? allCps.filter(cp => cp.guru_id && myGuruIdSet.has(cp.guru_id))
+                : allCps;
+
+            buildClassDropdownOptions();
+
+        } catch (err) {
+            console.error('Gagal memuat data awal Input Nilai:', err);
+            showToast('Terjadi kesalahan saat memuat data: ' + (err.message || 'Error'), 'error');
+        }
+    }
+
+    // =========================================================================
+    // 5. DROPDOWN PILIHAN KELAS (DISABLE JIKA BELUM ADA TP)
+    // =========================================================================
+    function buildClassDropdownOptions() {
+        const selectEl = document.getElementById('classSelect');
+        const options = [];
+
+        state.myAssignments.forEach(a => {
+            const rombel = state.allRombels.find(r => r.id === a.rombel_id);
+            const mapel = state.allMapels.find(m => m.id === a.mapel_id);
+            if (!rombel || !mapel) return;
+
+            const cps = state.myCps
+                .filter(cp => cp.mapel_id === mapel.id && String(cp.tingkat) === String(rombel.tingkat))
+                .sort((x, y) => (x.cp_number || 0) - (y.cp_number || 0));
+
+            options.push({
+                key: `${rombel.id}__${mapel.id}`,
+                assignment: a,
+                rombel,
+                mapel,
+                cps,
+                tpCount: cps.length
+            });
+        });
+
+        options.sort((a, b) =>
+            String(a.rombel.tingkat).localeCompare(String(b.rombel.tingkat), 'id', { numeric: true }) ||
+            String(a.rombel.name).localeCompare(String(b.rombel.name), 'id', { numeric: true }) ||
+            String(a.mapel.name).localeCompare(String(b.mapel.name), 'id')
+        );
+
+        state.classOptions = options;
+
+        if (options.length === 0) {
+            selectEl.innerHTML = `<option value="">Belum ada kelas yang diampu</option>`;
+            renderNoClassState('Belum ada mata pelajaran & kelas yang di-mapping untuk Anda. Silakan atur di Dashboard Guru terlebih dahulu.');
+            return;
+        }
+
+        let html = `<option value="">-- Pilih Kelas yang Akan Diinput --</option>`;
+        options.forEach(opt => {
+            const lockMark = opt.assignment && opt.assignment.is_finalized === true ? '🔒 ' : '';
+            if (opt.tpCount === 0) {
+                html += `<option value="${opt.key}" disabled>${escapeHtml(opt.rombel.name)} — ${escapeHtml(opt.mapel.name)} (Belum ada TP)</option>`;
+            } else {
+                html += `<option value="${opt.key}">${lockMark}${escapeHtml(opt.rombel.name)} — ${escapeHtml(opt.mapel.name)} (${opt.tpCount} TP)</option>`;
+            }
+        });
+        selectEl.innerHTML = html;
+
+        // Pilih otomatis kelas pertama yang sudah memiliki TP
+        const firstValid = options.find(o => o.tpCount > 0);
+        if (firstValid) {
+            selectEl.value = firstValid.key;
+            loadSelectedClassData(firstValid.key);
+        } else {
+            renderNoClassState('Semua kelas yang Anda ampu belum memiliki Tujuan Pembelajaran (TP).<br>Silakan input TP terlebih dahulu di halaman <strong>Dashboard Guru</strong>.');
+        }
+    }
+
+    function renderNoClassState(messageHtml) {
+        state.currentRombel = null;
+        state.currentMapel = null;
+        state.currentAssignment = null;
+        state.isCurrentClassFinalized = false;
+        state.currentCps = [];
+        state.currentStudents = [];
+        document.getElementById('metaTingkat').textContent = '-';
+        document.getElementById('metaRombel').textContent = '-';
+        document.getElementById('metaMapel').textContent = '-';
+        setUnsavedChanges(false);
+        applyFinalizationUIState();
+        renderLastSavedTimestamp();
+
+        document.getElementById('gradeTableWrapper').innerHTML = `
+            <div class="empty-state">
+                <p style="margin-bottom:14px;">${messageHtml}</p>
+                <button type="button" onclick="window.location.href='guru_dashboard.html'">← Kembali ke Dashboard Guru</button>
+            </div>
+        `;
+    }
+
+    async function onSelectClassChange(newKey) {
+        const proceedSwitch = async () => {
+            if (!newKey) {
+                state.selectedOptionKey = null;
+                renderNoClassState('Silakan pilih kelas dari dropdown di atas untuk mulai menginput nilai.');
+                return;
+            }
+            document.getElementById('classSelect').value = newKey;
+            await loadSelectedClassData(newKey);
+        };
+
+        if (state.hasUnsavedChanges) {
+            openUnsavedModal(
+                'Perubahan nilai atau pengaturan pada kelas ini belum disimpan. Simpan terlebih dahulu atau pindah kelas tanpa menyimpan?',
+                proceedSwitch,
+                () => {
+                    document.getElementById('classSelect').value = state.selectedOptionKey || '';
+                }
+            );
+            return;
+        }
+        await proceedSwitch();
+    }
+
+    // =========================================================================
+    // 6. MUAT SISWA, KONFIGURASI & NILAI UNTUK ROMBEL TERPILIH
+    // =========================================================================
+    function resolveDefaultConfigForMapelTingkat(mapel, tingkat) {
+        const vg = state.variabelGlobal;
+        const tStr = String(tingkat);
+        const tNum = parseInt(tingkat, 10);
+
+        const kkmMap = parseJsonObjectSafe(mapel?.kkm_per_tingkat);
+        const minMap = parseJsonObjectSafe(mapel?.nilai_min_per_tingkat);
+        const maxMap = parseJsonObjectSafe(mapel?.nilai_max_per_tingkat);
+
+        let kkm = 75;
+        if (kkmMap[tStr] !== undefined && kkmMap[tStr] !== null && kkmMap[tStr] !== '') {
+            kkm = Number(kkmMap[tStr]);
+        } else if (vg && tNum >= 1 && tNum <= 6 && vg[`kkm_${tNum}`]) {
+            kkm = Number(vg[`kkm_${tNum}`]);
+        } else if (vg && vg.kkm_1) {
+            kkm = Number(vg.kkm_1);
+        }
+
+        const bobot_uh = Number(mapel?.bobot_uh ?? vg?.bobot_uh ?? 50);
+        const bobot_psts = Number(mapel?.bobot_psts ?? vg?.bobot_psts ?? 25);
+        const bobot_psas = Number(mapel?.bobot_psas ?? vg?.bobot_psas ?? 25);
+
+        let nilai_min = kkm;
+        if (minMap[tStr] !== undefined && minMap[tStr] !== null && minMap[tStr] !== '') {
+            nilai_min = Number(minMap[tStr]);
+        } else if (vg && vg.nilai_min !== undefined && vg.nilai_min !== null) {
+            nilai_min = Number(vg.nilai_min);
+        }
+
+        let nilai_max = Math.min(state.scaleMax, 95);
+        if (maxMap[tStr] !== undefined && maxMap[tStr] !== null && maxMap[tStr] !== '') {
+            nilai_max = Number(maxMap[tStr]);
+        } else if (vg && vg.nilai_max !== undefined && vg.nilai_max !== null) {
+            nilai_max = Number(vg.nilai_max);
+        }
+
+        return { kkm, bobot_uh, bobot_psts, bobot_psas, nilai_min, nilai_max };
+    }
+
+    async function loadSelectedClassData(optionKey) {
+        const opt = state.classOptions.find(o => o.key === optionKey);
+        if (!opt || opt.tpCount === 0) {
+            showToast('Kelas ini belum memiliki TP.', 'error');
+            return;
+        }
+
+        state.selectedOptionKey = optionKey;
+        state.currentRombel = opt.rombel;
+        state.currentMapel = opt.mapel;
+        state.currentCps = opt.cps;
+        state.currentAssignment = opt.assignment || null;
+        state.isCurrentClassFinalized = Boolean(opt.assignment && opt.assignment.is_finalized === true);
+
+        // Tampilkan detail panel atas
+        document.getElementById('metaTingkat').textContent = `Tingkat ${opt.rombel.tingkat}`;
+        document.getElementById('metaRombel').textContent = opt.rombel.name;
+        document.getElementById('metaMapel').textContent = opt.mapel.name;
+
+        // Isi konfigurasi editable (KKM, Bobot, Nilai Min & Max)
+        state.config = resolveDefaultConfigForMapelTingkat(opt.mapel, opt.rombel.tingkat);
+        document.getElementById('inputKkm').value = state.config.kkm;
+        document.getElementById('inputBobotUh').value = state.config.bobot_uh;
+        document.getElementById('inputBobotPsts').value = state.config.bobot_psts;
+        document.getElementById('inputBobotPsas').value = state.config.bobot_psas;
+        document.getElementById('inputNilaiMin').value = state.config.nilai_min;
+        document.getElementById('inputNilaiMax').value = state.config.nilai_max;
+
+        document.getElementById('gradeTableWrapper').innerHTML = `<div class="empty-state">Memuat daftar siswa dan nilai...</div>`;
+        document.getElementById('btnDownloadTemplate').disabled = false;
+
+        try {
+            // Ambil daftar siswa pada rombel ini
+            let studQ = db.from('students')
+                .select('*')
+                .eq('school_id', state.schoolId)
+                .eq('rombel_id', opt.rombel.id);
+            if (state.activeYear) studQ = studQ.eq('academic_year_id', state.activeYear.id);
+            const { data: studentsData, error: studErr } = await studQ.order('no_absen', { ascending: true });
+            if (studErr) throw studErr;
+
+            state.currentStudents = (studentsData || []).sort((a, b) =>
+                (Number(a.no_absen) || 999) - (Number(b.no_absen) || 999) ||
+                String(a.full_name).localeCompare(String(b.full_name), 'id')
+            );
+
+            // Inisialisasi matrix nilai kosong
+            state.scoresByStudent = {};
+            state.currentStudents.forEach(st => {
+                const uhMap = {};
+                state.currentCps.forEach(cp => { uhMap[cp.id] = null; });
+                state.scoresByStudent[st.id] = {
+                    uh: uhMap,
+                    psts: null,
+                    psas: null,
+                    tambahan: null
+                };
+            });
+
+            // Ambil data grades dari Supabase
+            state.existingGradesDb = [];
+            if (state.currentStudents.length > 0) {
+                const studentIds = state.currentStudents.map(s => s.id);
+                let gradeQ = db.from('grades')
+                    .select('*')
+                    .eq('school_id', state.schoolId)
+                    .eq('mapel_id', opt.mapel.id)
+                    .in('student_id', studentIds);
+                if (state.activeSemester) gradeQ = gradeQ.eq('semester_id', state.activeSemester.id);
+
+                const { data: gradesData, error: gradeErr } = await gradeQ;
+                if (gradeErr) throw gradeErr;
+
+                state.existingGradesDb = gradesData || [];
+                state.existingGradesDb.forEach(g => {
+                    const bucket = state.scoresByStudent[g.student_id];
+                    if (!bucket) return;
+                    const scoreVal = (g.score !== null && g.score !== '' && !isNaN(Number(g.score))) ? Number(g.score) : null;
+                    const gType = String(g.grade_type || '').toUpperCase();
+
+                    if (gType.startsWith('UH') && g.cp_id && bucket.uh.hasOwnProperty(g.cp_id)) {
+                        bucket.uh[g.cp_id] = scoreVal;
+                    } else if (['PSTS', 'PTS', 'STS'].includes(gType)) {
+                        bucket.psts = scoreVal;
+                    } else if (['PSAS', 'PAS', 'SAS'].includes(gType)) {
+                        bucket.psas = scoreVal;
+                    } else if (gType === 'TAMBAHAN') {
+                        bucket.tambahan = scoreVal;
+                    }
+                });
+            }
+
+            // Sinkronisasi status finalisasi terbaru khusus untuk rombel + mapel aktif
+            try {
+                let taQ = db.from('teaching_assignments')
+                    .select('*')
+                    .eq('school_id', state.schoolId)
+                    .eq('rombel_id', opt.rombel.id)
+                    .eq('mapel_id', opt.mapel.id);
+                if (state.activeYear) taQ = taQ.eq('academic_year_id', state.activeYear.id);
+                const { data: taRows } = await taQ;
+                if (taRows && taRows.length > 0) {
+                    const matchedTa = taRows.find(r => state.myGuruIds.includes(r.guru_id)) || taRows[0];
+                    state.currentAssignment = matchedTa;
+                    opt.assignment = matchedTa;
+                    state.isCurrentClassFinalized = matchedTa.is_finalized === true;
+                }
+            } catch (taErr) {
+                console.warn('Info sinkronisasi status finalisasi:', taErr);
+            }
+
+            state.hasImportedOrExisting = state.existingGradesDb.length > 0;
+            setUnsavedChanges(false);
+            renderLastSavedTimestamp();
+
+            recalculateAllScores();
+            renderGradeTable();
+            applyFinalizationUIState();
+
+        } catch (err) {
+            console.error('Gagal memuat data kelas:', err);
+            showToast('Gagal memuat data siswa/nilai: ' + (err.message || 'Error'), 'error');
+        }
+    }
+
+    // =========================================================================
+    // 7. PERHITUNGAN NILAI ASLI, PENGKATROLAN KETAT, NILAI JADI & PERINGKAT
+    //    - Nilai Asli muncul HANYA jika minimal ada 1 nilai UH, PSTS wajib ada,
+    //      dan PSAS wajib ada. Jika belum terpenuhi -> null (tampil strip "-").
+    //    - Nilai Jadi & Katrol HANYA dihitung dari siswa yang sudah memiliki
+    //      Nilai Asli. Siswa tanpa Nilai Asli -> Nilai Jadi tetap null ("-").
+    // =========================================================================
+    function recalculateAllScores() {
+        const cps = state.currentCps;
+        const students = state.currentStudents;
+        const { bobot_uh, bobot_psts, bobot_psas, nilai_min, nilai_max } = state.config;
+        const totalBobot = (Number(bobot_uh) || 0) + (Number(bobot_psts) || 0) + (Number(bobot_psas) || 0);
+
+        const rawResults = [];
+
+        // Langkah 1: Hitung Nilai Asli tiap siswa yang memenuhi syarat lengkap
+        students.forEach(st => {
+            const sc = state.scoresByStudent[st.id] || { uh: {}, psts: null, psas: null, tambahan: null };
+
+            // Kumpulkan nilai UH yang sudah terisi
+            const filledUhValues = [];
+            cps.forEach(cp => {
+                const val = sc.uh[cp.id];
+                if (isValidScore(val)) {
+                    filledUhValues.push(Number(val));
+                }
+            });
+
+            const hasMinimalOneUh = filledUhValues.length >= 1;
+            const hasPsts = isValidScore(sc.psts);
+            const hasPsas = isValidScore(sc.psas);
+            const isEligibleNilaiAsli = hasMinimalOneUh && hasPsts && hasPsas && totalBobot > 0;
+
+            const tambahVal = isValidScore(sc.tambahan) ? Number(sc.tambahan) : 0;
+
+            if (!isEligibleNilaiAsli) {
+                rawResults.push({
+                    studentId: st.id,
+                    hasNilaiAsli: false,
+                    nilaiAsliRaw: null,
+                    nilaiAsli: null,
+                    tambahVal,
+                    nilaiKatrol: null,
+                    nilaiJadi: null,
+                    rank: null
+                });
+                return;
+            }
+
+            const sumUh = filledUhValues.reduce((acc, v) => acc + v, 0);
+            const avgUh = sumUh / filledUhValues.length;
+            const pstsVal = Number(sc.psts);
+            const psasVal = Number(sc.psas);
+
+            const nilaiAsliRaw = ((avgUh * bobot_uh) + (pstsVal * bobot_psts) + (psasVal * bobot_psas)) / totalBobot;
+            const nilaiAsli = roundBySetting(nilaiAsliRaw);
+
+            rawResults.push({
+                studentId: st.id,
+                hasNilaiAsli: true,
+                nilaiAsliRaw,
+                nilaiAsli,
+                tambahVal,
+                nilaiKatrol: nilaiAsli,
+                nilaiJadi: nilaiAsli,
+                rank: null
+            });
+        });
+
+        // Langkah 2: Sistem Pengkatrolan Ketat HANYA pada siswa yang sudah memiliki Nilai Asli
+        // Aturan: Nilai yang sudah di atas nilai_max TIDAK ikut dikatrol (dipertahankan apa adanya).
+        const withNilaiAsli = rawResults.filter(r => r.hasNilaiAsli && r.nilaiAsli !== null);
+        const targetMin = Number(nilai_min);
+        const targetMax = Number(nilai_max);
+        const canScale = Number.isFinite(targetMin) && Number.isFinite(targetMax) && targetMax > targetMin;
+
+        if (canScale && withNilaiAsli.length > 0) {
+            const eligibleKatrol = withNilaiAsli.filter(r => r.nilaiAsli <= targetMax);
+            if (eligibleKatrol.length > 0) {
+                const actualMin = Math.min(...eligibleKatrol.map(r => r.nilaiAsli));
+                const actualMax = Math.max(...eligibleKatrol.map(r => r.nilaiAsli));
+
+                // Katrol diterapkan hanya jika ada nilai di bawah targetMin
+                if (actualMin < targetMin) {
+                    eligibleKatrol.forEach(r => {
+                        let katrolVal;
+                        if (actualMax > actualMin) {
+                            katrolVal = targetMin + ((r.nilaiAsli - actualMin) / (actualMax - actualMin)) * (targetMax - targetMin);
+                        } else {
+                            katrolVal = targetMin;
+                        }
+                        // Pastikan ketat berada dalam rentang [targetMin, targetMax]
+                        katrolVal = Math.max(targetMin, Math.min(targetMax, katrolVal));
+                        r.nilaiKatrol = roundBySetting(katrolVal);
+                    });
+                }
+            }
+        }
+
+        // Langkah 3: Tambahkan Nilai Tambahan ke Nilai Jadi (HANYA jika Nilai Asli sudah ada)
+        withNilaiAsli.forEach(r => {
+            const combined = r.nilaiKatrol + r.tambahVal;
+            const clamped = Math.max(0, Math.min(state.scaleMax, combined));
+            r.nilaiJadi = roundBySetting(clamped);
+        });
+
+        // Langkah 4: Hitung Peringkat HANYA untuk siswa yang sudah memiliki Nilai Jadi
+        const sortedForRank = [...withNilaiAsli].sort((a, b) =>
+            (b.nilaiJadi - a.nilaiJadi) || (b.nilaiAsli - a.nilaiAsli)
+        );
+
+        let currentRank = 0;
+        let prevJadi = null;
+        let prevAsli = null;
+        sortedForRank.forEach((item, idx) => {
+            if (idx === 0 || item.nilaiJadi !== prevJadi || item.nilaiAsli !== prevAsli) {
+                currentRank = idx + 1;
+            }
+            item.rank = currentRank;
+            prevJadi = item.nilaiJadi;
+            prevAsli = item.nilaiAsli;
+        });
+
+        state.calcByStudent = {};
+        rawResults.forEach(r => {
+            state.calcByStudent[r.studentId] = r;
+        });
+    }
+
+    // =========================================================================
+    // 8. RENDER TABEL INPUT NILAI (THEAD, TBODY, TFOOT JUMLAH & RATA-RATA)
+    // =========================================================================
+    function getScoreCellClass(val) {
+        if (val === null || val === undefined || val === '') return 'cell-empty';
+        if (Number(val) < Number(state.config.kkm)) return 'cell-below-kkm';
+        return '';
+    }
+
+    function getAsliPillClass(nilaiAsli) {
+        if (nilaiAsli === null || nilaiAsli === undefined) return 'empty-pill';
+        return nilaiAsli < state.config.kkm ? 'below-kkm' : '';
+    }
+
+    function getJadiPillClass(nilaiJadi) {
+        if (nilaiJadi === null || nilaiJadi === undefined) return 'empty-pill';
+        return nilaiJadi < state.config.kkm ? 'below-kkm' : 'final-good';
+    }
+
+    function renderGradeTable() {
+        const wrapper = document.getElementById('gradeTableWrapper');
+        const students = state.currentStudents;
+        const cps = state.currentCps;
+
+        if (!state.currentRombel) {
+            wrapper.innerHTML = `<div class="empty-state">Silakan pilih kelas terlebih dahulu.</div>`;
+            return;
+        }
+
+        if (students.length === 0) {
+            wrapper.innerHTML = `<div class="empty-state">Belum ada data siswa pada kelas <strong>${escapeHtml(state.currentRombel.name)}</strong>.</div>`;
+            return;
+        }
+
+        const tpColsHtml = cps.map((cp, idx) =>
+            `<th title="${escapeHtml(cp.description || '')}">TP ${idx + 1}</th>`
+        ).join('');
+
+        const bodyRowsHtml = students.map((st, idx) => {
+            const sc = state.scoresByStudent[st.id];
+            const calc = state.calcByStudent[st.id] || { hasNilaiAsli: false, nilaiAsli: null, nilaiJadi: null, rank: null };
+
+            const rowRankClass = calc.rank === 1 ? 'rank-row-1' : calc.rank === 2 ? 'rank-row-2' : calc.rank === 3 ? 'rank-row-3' : '';
+
+            const tpInputsHtml = cps.map(cp => {
+                const val = sc.uh[cp.id];
+                const displayVal = (val !== null && val !== undefined) ? val : '';
+                const cls = getScoreCellClass(val);
+                return `
+                    <td>
+                        <input type="text"
+                               inputmode="decimal"
+                               class="cell-input ${cls}"
+                               data-student="${st.id}"
+                               data-field="uh"
+                               data-cp="${cp.id}"
+                               value="${displayVal}"
+                               placeholder="-"
+                               oninput="onScoreCellInput(this)"
+                               onblur="onScoreCellBlur(this)">
+                    </td>
+                `;
+            }).join('');
+
+            const pstsVal = (sc.psts !== null && sc.psts !== undefined) ? sc.psts : '';
+            const psasVal = (sc.psas !== null && sc.psas !== undefined) ? sc.psas : '';
+            const tambahVal = (sc.tambahan !== null && sc.tambahan !== undefined) ? sc.tambahan : '';
+
+            const asliCls = getAsliPillClass(calc.nilaiAsli);
+            const jadiCls = getJadiPillClass(calc.nilaiJadi);
+            const rankHtml = buildRankBadgeHtml(calc.rank);
+
+            return `
+                <tr id="studentRow_${st.id}" class="${rowRankClass}">
+                    <td class="sticky-col-no">${idx + 1}</td>
+                    <td class="sticky-col-name student-name-cell" title="${escapeHtml(st.full_name)}">${escapeHtml(st.full_name)}</td>
+                    ${tpInputsHtml}
+                    <td>
+                        <input type="text" inputmode="decimal" class="cell-input ${getScoreCellClass(sc.psts)}"
+                               data-student="${st.id}" data-field="psts"
+                               value="${pstsVal}" placeholder="-"
+                               oninput="onScoreCellInput(this)" onblur="onScoreCellBlur(this)">
+                    </td>
+                    <td>
+                        <input type="text" inputmode="decimal" class="cell-input ${getScoreCellClass(sc.psas)}"
+                               data-student="${st.id}" data-field="psas"
+                               value="${psasVal}" placeholder="-"
+                               oninput="onScoreCellInput(this)" onblur="onScoreCellBlur(this)">
+                    </td>
+                    <td>
+                        <input type="text" inputmode="decimal" class="cell-input cell-tambahan"
+                               data-student="${st.id}" data-field="tambahan"
+                               value="${tambahVal}" placeholder="0"
+                               oninput="onScoreCellInput(this)" onblur="onScoreCellBlur(this)">
+                    </td>
+                    <td>
+                        <span class="calc-pill ${asliCls}" id="nilaiAsli_${st.id}">${formatDisplayNumber(calc.nilaiAsli)}</span>
+                    </td>
+                    <td>
+                        <span class="calc-pill ${jadiCls}" id="nilaiJadi_${st.id}">${formatDisplayNumber(calc.nilaiJadi)}</span>
+                    </td>
+                    <td id="rankCell_${st.id}">${rankHtml}</td>
+                    <td class="desc-placeholder"></td>
+                </tr>
+            `;
+        }).join('');
+
+        wrapper.innerHTML = `
+            <table class="grade-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="sticky-col-no">No</th>
+                        <th rowspan="2" class="sticky-col-name">Nama Siswa</th>
+                        <th colspan="${cps.length}">Nilai UH (${cps.length} TP)</th>
+                        <th rowspan="2">Nilai PSTS</th>
+                        <th rowspan="2">Nilai PSAS</th>
+                        <th rowspan="2">Nilai Tambahan</th>
+                        <th colspan="2">Nilai Raport</th>
+                        <th rowspan="2">Peringkat</th>
+                        <th rowspan="2">Deskripsi</th>
+                    </tr>
+                    <tr class="sub-header">
+                        ${tpColsHtml}
+                        <th>Nilai Asli</th>
+                        <th>Nilai Jadi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${bodyRowsHtml}
+                </tbody>
+                <tfoot id="gradeSummaryTfoot">
+                    ${buildSummaryFooterHtml()}
+                </tfoot>
+            </table>
+        `;
+    }
+
+    function buildRankBadgeHtml(rank) {
+        if (rank === null || rank === undefined || rank === '' || rank === '-') {
+            return `<span class="rank-badge rank-other">-</span>`;
+        }
+        if (rank === 1) return `<span class="rank-badge rank-1">🥇 1</span>`;
+        if (rank === 2) return `<span class="rank-badge rank-2">🥈 2</span>`;
+        if (rank === 3) return `<span class="rank-badge rank-3">🥉 3</span>`;
+        return `<span class="rank-badge rank-other">${rank}</span>`;
+    }
+
+    function buildSummaryFooterHtml() {
+        const students = state.currentStudents;
+        const cps = state.currentCps;
+
+        // Rekap per TP hanya dari siswa yang sudah terisi nilainya
+        const tpStats = cps.map(cp => {
+            let sum = 0;
+            let count = 0;
+            students.forEach(st => {
+                const v = state.scoresByStudent[st.id]?.uh[cp.id];
+                if (isValidScore(v)) {
+                    sum += Number(v);
+                    count++;
+                }
+            });
+            return { sum, count };
+        });
+
+        let sumPsts = 0, cntPsts = 0;
+        let sumPsas = 0, cntPsas = 0;
+        let sumTambahan = 0, cntTambahan = 0;
+        let sumAsli = 0, cntAsli = 0;
+        let sumJadi = 0, cntJadi = 0;
+
+        students.forEach(st => {
+            const sc = state.scoresByStudent[st.id];
+            const calc = state.calcByStudent[st.id];
+
+            if (isValidScore(sc?.psts)) { sumPsts += Number(sc.psts); cntPsts++; }
+            if (isValidScore(sc?.psas)) { sumPsas += Number(sc.psas); cntPsas++; }
+            if (isValidScore(sc?.tambahan)) { sumTambahan += Number(sc.tambahan); cntTambahan++; }
+            if (calc && isValidScore(calc.nilaiAsli)) { sumAsli += Number(calc.nilaiAsli); cntAsli++; }
+            if (calc && isValidScore(calc.nilaiJadi)) { sumJadi += Number(calc.nilaiJadi); cntJadi++; }
+        });
+
+        const fmtSum = (sum, cnt) => cnt > 0 ? formatDisplayNumber(sum) : '-';
+        const fmtAvg = (sum, cnt) => cnt > 0 ? formatDisplayNumber(sum / cnt) : '-';
+
+        const sumTpCells = tpStats.map(s => `<td>${fmtSum(s.sum, s.count)}</td>`).join('');
+        const avgTpCells = tpStats.map(s => `<td>${fmtAvg(s.sum, s.count)}</td>`).join('');
+
+        return `
+            <tr class="summary-sum-row">
+                <td class="sticky-col-no">Σ</td>
+                <td class="sticky-col-name" style="text-align:left; padding-left:8px;">Jumlah Nilai</td>
+                ${sumTpCells}
+                <td>${fmtSum(sumPsts, cntPsts)}</td>
+                <td>${fmtSum(sumPsas, cntPsas)}</td>
+                <td>${fmtSum(sumTambahan, cntTambahan)}</td>
+                <td>${fmtSum(sumAsli, cntAsli)}</td>
+                <td>${fmtSum(sumJadi, cntJadi)}</td>
+                <td>-</td>
+                <td>-</td>
+            </tr>
+            <tr class="summary-avg-row">
+                <td class="sticky-col-no">x̄</td>
+                <td class="sticky-col-name" style="text-align:left; padding-left:8px;">Rata-rata</td>
+                ${avgTpCells}
+                <td>${fmtAvg(sumPsts, cntPsts)}</td>
+                <td>${fmtAvg(sumPsas, cntPsas)}</td>
+                <td>${fmtAvg(sumTambahan, cntTambahan)}</td>
+                <td>${fmtAvg(sumAsli, cntAsli)}</td>
+                <td>${fmtAvg(sumJadi, cntJadi)}</td>
+                <td>-</td>
+                <td>-</td>
+            </tr>
+        `;
+    }
+
+    function refreshCalculatedCellsOnly() {
+        recalculateAllScores();
+
+        // Update warna sel nilai sesuai KKM terbaru
+        document.querySelectorAll('.cell-input').forEach(inp => {
+            const field = inp.dataset.field;
+            if (field === 'tambahan') return;
+            const parsed = parseStrictNumber(inp.value);
+            inp.classList.remove('cell-empty', 'cell-below-kkm');
+            if (parsed.empty) {
+                inp.classList.add('cell-empty');
+            } else if (parsed.valid && parsed.value < state.config.kkm) {
+                inp.classList.add('cell-below-kkm');
+            }
+        });
+
+        state.currentStudents.forEach(st => {
+            const calc = state.calcByStudent[st.id];
+            if (!calc) return;
+
+            const rowEl = document.getElementById(`studentRow_${st.id}`);
+            if (rowEl) {
+                rowEl.classList.remove('rank-row-1', 'rank-row-2', 'rank-row-3');
+                if (calc.rank === 1) rowEl.classList.add('rank-row-1');
+                else if (calc.rank === 2) rowEl.classList.add('rank-row-2');
+                else if (calc.rank === 3) rowEl.classList.add('rank-row-3');
+            }
+
+            const asliEl = document.getElementById(`nilaiAsli_${st.id}`);
+            if (asliEl) {
+                asliEl.textContent = formatDisplayNumber(calc.nilaiAsli);
+                asliEl.className = 'calc-pill ' + getAsliPillClass(calc.nilaiAsli);
+            }
+
+            const jadiEl = document.getElementById(`nilaiJadi_${st.id}`);
+            if (jadiEl) {
+                jadiEl.textContent = formatDisplayNumber(calc.nilaiJadi);
+                jadiEl.className = 'calc-pill ' + getJadiPillClass(calc.nilaiJadi);
+            }
+
+            const rankEl = document.getElementById(`rankCell_${st.id}`);
+            if (rankEl) {
+                rankEl.innerHTML = buildRankBadgeHtml(calc.rank);
+            }
+        });
+
+        const tfoot = document.getElementById('gradeSummaryTfoot');
+        if (tfoot) {
+            tfoot.innerHTML = buildSummaryFooterHtml();
+        }
+    }
+
+    // =========================================================================
+    // 9. EVENT HANDLER EDIT SEL NILAI & EDIT KONFIGURASI PANEL ATAS
+    // =========================================================================
+    function onScoreCellInput(inputEl) {
+        if (state.isCurrentClassFinalized) return;
+        const field = inputEl.dataset.field;
+        const studentId = inputEl.dataset.student;
+        const cpId = inputEl.dataset.cp;
+        const allowNegative = field === 'tambahan';
+
+        // Saring karakter non-angka secara ketat (izinkan angka & 1 titik/koma desimal)
+        let raw = inputEl.value.replace(',', '.');
+        let cleaned = '';
+        let hasDot = false;
+        for (let i = 0; i < raw.length; i++) {
+            const ch = raw[i];
+            if (ch >= '0' && ch <= '9') {
+                cleaned += ch;
+            } else if (ch === '.' && !hasDot) {
+                hasDot = true;
+                cleaned += ch;
+            } else if (ch === '-' && i === 0 && allowNegative) {
+                cleaned += ch;
+            }
+        }
+
+        if (cleaned !== raw) {
+            inputEl.value = cleaned;
+            showToast('Hanya diperbolehkan memasukkan angka (bulat atau desimal).', 'error');
+        }
+
+        if (cleaned === '' || cleaned === '-' || cleaned === '.') {
+            updateStudentScoreValue(studentId, field, cpId, null);
+            setUnsavedChanges(true);
+            refreshCalculatedCellsOnly();
+            return;
+        }
+
+        const num = Number(cleaned);
+        if (!Number.isFinite(num)) return;
+
+        // Validasi rentang nilai
+        if (!allowNegative && (num < 0 || num > state.scaleMax)) {
+            showToast(`Rentang nilai harus antara 0 sampai ${state.scaleMax}.`, 'error');
+            const clamped = Math.max(0, Math.min(state.scaleMax, num));
+            inputEl.value = String(clamped);
+            updateStudentScoreValue(studentId, field, cpId, clamped);
+        } else if (allowNegative && (num < -state.scaleMax || num > state.scaleMax)) {
+            showToast(`Nilai tambahan harus antara -${state.scaleMax} sampai ${state.scaleMax}.`, 'error');
+            const clamped = Math.max(-state.scaleMax, Math.min(state.scaleMax, num));
+            inputEl.value = String(clamped);
+            updateStudentScoreValue(studentId, field, cpId, clamped);
+        } else {
+            updateStudentScoreValue(studentId, field, cpId, num);
+        }
+
+        setUnsavedChanges(true);
+        refreshCalculatedCellsOnly();
+    }
+
+    function onScoreCellBlur(inputEl) {
+        const parsed = parseStrictNumber(inputEl.value);
+        const studentId = inputEl.dataset.student;
+        const field = inputEl.dataset.field;
+        const cpId = inputEl.dataset.cp;
+
+        if (parsed.empty) {
+            inputEl.value = '';
+            updateStudentScoreValue(studentId, field, cpId, null);
+            refreshCalculatedCellsOnly();
+        } else if (!parsed.valid) {
+            inputEl.value = '';
+            updateStudentScoreValue(studentId, field, cpId, null);
+            showToast('Format nilai tidak valid, sel dikosongkan.', 'error');
+            refreshCalculatedCellsOnly();
+        } else {
+            inputEl.value = String(parsed.value);
+        }
+    }
+
+    function updateStudentScoreValue(studentId, field, cpId, value) {
+        const bucket = state.scoresByStudent[studentId];
+        if (!bucket) return;
+        if (field === 'uh') bucket.uh[cpId] = value;
+        else if (field === 'psts') bucket.psts = value;
+        else if (field === 'psas') bucket.psas = value;
+        else if (field === 'tambahan') bucket.tambahan = value;
+    }
+
+    function onConfigInputChange(key, inputEl) {
+        if (state.isCurrentClassFinalized) return;
+        let raw = inputEl.value.replace(',', '.');
+        let cleaned = raw.replace(/[^0-9.]/g, '');
+        const dotIdx = cleaned.indexOf('.');
+        if (dotIdx !== -1) {
+            cleaned = cleaned.slice(0, dotIdx + 1) + cleaned.slice(dotIdx + 1).replace(/\./g, '');
+        }
+        if (cleaned !== raw) {
+            inputEl.value = cleaned;
+        }
+
+        const num = Number(cleaned);
+        const isWeight = key.startsWith('bobot_');
+        const maxAllowed = isWeight ? 100 : state.scaleMax;
+
+        if (cleaned === '' || !Number.isFinite(num) || num < 0 || num > maxAllowed) {
+            inputEl.classList.add('invalid');
+            return;
+        }
+
+        inputEl.classList.remove('invalid');
+        state.config[key] = num;
+        setUnsavedChanges(true);
+        refreshCalculatedCellsOnly();
+    }
+
+    function normalizeConfigInput(key, inputEl) {
+        const parsed = parseStrictNumber(inputEl.value);
+        const isWeight = key.startsWith('bobot_');
+        const maxAllowed = isWeight ? 100 : state.scaleMax;
+
+        if (!parsed.valid || parsed.empty || parsed.value < 0 || parsed.value > maxAllowed) {
+            inputEl.value = String(state.config[key]);
+            inputEl.classList.remove('invalid');
+            showToast(`Nilai ${key.replace('_', ' ')} harus angka antara 0 – ${maxAllowed}.`, 'error');
+            return;
+        }
+        if (state.config[key] !== parsed.value) {
+            state.config[key] = parsed.value;
+            setUnsavedChanges(true);
+        }
+        inputEl.value = String(parsed.value);
+        inputEl.classList.remove('invalid');
+
+        if (state.config.nilai_min >= state.config.nilai_max) {
+            showToast('Catatan: Nilai Min Katrol sebaiknya lebih kecil dari Nilai Max Katrol.', 'info');
+        }
+        refreshCalculatedCellsOnly();
+    }
+
+    // =========================================================================
+    // 10. SIMPAN NILAI SISWA + KKM, PEMBOBOTAN & BATAS KATROL KE SUPABASE
+    // =========================================================================
+    function syncConfigFromInputsBeforeSave() {
+        const fields = [
+            { key: 'kkm', id: 'inputKkm', max: state.scaleMax, label: 'KKM' },
+            { key: 'bobot_uh', id: 'inputBobotUh', max: 100, label: 'Bobot UH' },
+            { key: 'bobot_psts', id: 'inputBobotPsts', max: 100, label: 'Bobot PSTS' },
+            { key: 'bobot_psas', id: 'inputBobotPsas', max: 100, label: 'Bobot PSAS' },
+            { key: 'nilai_min', id: 'inputNilaiMin', max: state.scaleMax, label: 'Katrol Min' },
+            { key: 'nilai_max', id: 'inputNilaiMax', max: state.scaleMax, label: 'Katrol Max' }
+        ];
+
+        for (const f of fields) {
+            const el = document.getElementById(f.id);
+            const parsed = parseStrictNumber(el ? el.value : '');
+            if (!parsed.valid || parsed.empty || parsed.value < 0 || parsed.value > f.max) {
+                return { ok: false, message: `${f.label} tidak valid (harus angka 0 – ${f.max}).` };
+            }
+            state.config[f.key] = parsed.value;
+        }
+
+        const totalBobot = state.config.bobot_uh + state.config.bobot_psts + state.config.bobot_psas;
+        if (totalBobot <= 0) {
+            return { ok: false, message: 'Total bobot (UH + PSTS + PSAS) harus lebih dari 0.' };
+        }
+
+        return { ok: true };
+    }
+
+    async function saveCurrentRombelGrades() {
+        if (!state.currentRombel || !state.currentMapel) return false;
+        if (state.isCurrentClassFinalized) {
+            showToast('Kelas ini sudah difinalisasi. Buka finalisasi terlebih dahulu untuk menyimpan perubahan.', 'error');
+            return false;
+        }
+
+        const cfgCheck = syncConfigFromInputsBeforeSave();
+        if (!cfgCheck.ok) {
+            showToast(cfgCheck.message, 'error');
+            return false;
+        }
+
+        const btn = document.getElementById('btnSimpanNilai');
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+
+        try {
+            const mapel = state.currentMapel;
+            const tingkatKey = String(state.currentRombel.tingkat);
+            const semId = state.activeSemester ? state.activeSemester.id : null;
+
+            // 10.1 Simpan KKM, Pembobotan (UH, PSTS, PSAS), serta Batas Katrol (Min/Max) ke tabel mapels
+            const updatedKkmMap = { ...parseJsonObjectSafe(mapel.kkm_per_tingkat), [tingkatKey]: state.config.kkm };
+            const updatedMinMap = { ...parseJsonObjectSafe(mapel.nilai_min_per_tingkat), [tingkatKey]: state.config.nilai_min };
+            const updatedMaxMap = { ...parseJsonObjectSafe(mapel.nilai_max_per_tingkat), [tingkatKey]: state.config.nilai_max };
+
+            const { data: updatedMapelRows, error: mapelErr } = await db
+                .from('mapels')
+                .update({
+                    kkm_per_tingkat: updatedKkmMap,
+                    bobot_uh: state.config.bobot_uh,
+                    bobot_psts: state.config.bobot_psts,
+                    bobot_psas: state.config.bobot_psas,
+                    nilai_min_per_tingkat: updatedMinMap,
+                    nilai_max_per_tingkat: updatedMaxMap
+                })
+                .eq('id', mapel.id)
+                .select('id');
+
+            if (mapelErr) throw mapelErr;
+            if (!updatedMapelRows || updatedMapelRows.length === 0) {
+                throw new Error('Gagal menyimpan KKM/Bobot/Katrol pada tabel "mapels" (periksa policy RLS tabel mapels di Supabase).');
+            }
+
+            // Update cache mapel lokal & semua opsi kelas yang memakai mapel sama
+            mapel.kkm_per_tingkat = updatedKkmMap;
+            mapel.bobot_uh = state.config.bobot_uh;
+            mapel.bobot_psts = state.config.bobot_psts;
+            mapel.bobot_psas = state.config.bobot_psas;
+            mapel.nilai_min_per_tingkat = updatedMinMap;
+            mapel.nilai_max_per_tingkat = updatedMaxMap;
+
+            // 10.2 Sinkronisasi tabel grades untuk rombel & mapel aktif
+            const existingMap = new Map();
+            state.existingGradesDb.forEach(g => {
+                const gType = String(g.grade_type || '').toUpperCase();
+                let key = '';
+                if (gType.startsWith('UH') && g.cp_id) key = `${g.student_id}__UH__${g.cp_id}`;
+                else if (['PSTS', 'PTS', 'STS'].includes(gType)) key = `${g.student_id}__PSTS`;
+                else if (['PSAS', 'PAS', 'SAS'].includes(gType)) key = `${g.student_id}__PSAS`;
+                else if (gType === 'TAMBAHAN') key = `${g.student_id}__TAMBAHAN`;
+                if (key) existingMap.set(key, g);
+            });
+
+            const rowsToInsert = [];
+            const rowsToUpdate = [];
+            const idsToDelete = [];
+
+            const processEntry = (key, studentId, gradeType, cpId, newVal) => {
+                const existing = existingMap.get(key);
+                const hasVal = isValidScore(newVal);
+
+                if (hasVal) {
+                    if (existing) {
+                        if (Number(existing.score) !== Number(newVal)) {
+                            rowsToUpdate.push({ id: existing.id, score: Number(newVal) });
+                        }
+                    } else {
+                        rowsToInsert.push({
+                            school_id: state.schoolId,
+                            student_id: studentId,
+                            mapel_id: mapel.id,
+                            cp_id: cpId,
+                            grade_type: gradeType,
+                            score: Number(newVal),
+                            semester_id: semId
+                        });
+                    }
+                } else if (existing) {
+                    idsToDelete.push(existing.id);
+                }
+            };
+
+            state.currentStudents.forEach(st => {
+                const sc = state.scoresByStudent[st.id];
+                if (!sc) return;
+
+                state.currentCps.forEach(cp => {
+                    processEntry(`${st.id}__UH__${cp.id}`, st.id, 'UH', cp.id, sc.uh[cp.id]);
+                });
+                processEntry(`${st.id}__PSTS`, st.id, 'PSTS', null, sc.psts);
+                processEntry(`${st.id}__PSAS`, st.id, 'PSAS', null, sc.psas);
+                processEntry(`${st.id}__TAMBAHAN`, st.id, 'TAMBAHAN', null, sc.tambahan);
+            });
+
+            if (idsToDelete.length > 0) {
+                const { error: delErr } = await db.from('grades').delete().in('id', idsToDelete);
+                if (delErr) throw delErr;
+            }
+
+            if (rowsToInsert.length > 0) {
+                const { error: insErr } = await db.from('grades').insert(rowsToInsert);
+                if (insErr) throw insErr;
+            }
+
+            for (const upd of rowsToUpdate) {
+                const { error: updErr } = await db.from('grades').update({ score: upd.score }).eq('id', upd.id);
+                if (updErr) throw updErr;
+            }
+
+            // Refresh existingGradesDb agar sinkron untuk penyimpanan berikutnya
+            const studentIds = state.currentStudents.map(s => s.id);
+            if (studentIds.length > 0) {
+                let refQ = db.from('grades')
+                    .select('*')
+                    .eq('school_id', state.schoolId)
+                    .eq('mapel_id', mapel.id)
+                    .in('student_id', studentIds);
+                if (semId) refQ = refQ.eq('semester_id', semId);
+                const { data: refreshed } = await refQ;
+                state.existingGradesDb = refreshed || [];
+            }
+
+            // Simpan waktu simpan terakhir
+            const storageKey = getLastSavedStorageKey();
+            if (storageKey) {
+                localStorage.setItem(storageKey, new Date().toISOString());
+            }
+
+            state.hasImportedOrExisting = state.existingGradesDb.length > 0;
+            updateImportButtonLabel();
+            renderLastSavedTimestamp();
+            setUnsavedChanges(false);
+            showToast(`Nilai, KKM, Bobot & Katrol kelas ${state.currentRombel.name} berhasil disimpan!`, 'success');
+            return true;
+
+        } catch (err) {
+            console.error('Gagal menyimpan nilai:', err);
+            showToast('Gagal menyimpan nilai: ' + (err.message || 'Error'), 'error');
+            btn.disabled = false;
+            return false;
+        } finally {
+            btn.textContent = '💾 Simpan Nilai';
+            btn.disabled = !state.hasUnsavedChanges || state.isCurrentClassFinalized;
+        }
+    }
+
+    // =========================================================================
+    // 11. UNDUH TEMPLATE EXCEL (.XLSX) — NAMA SHEET = NAMA ROMBEL = NAMA FILE
+    // =========================================================================
+    function sanitizeExcelSheetName(name) {
+        return String(name || 'Rombel')
+            .replace(/[\\/?*[\]:]/g, ' ')
+            .trim()
+            .slice(0, 31) || 'Rombel';
+    }
+
+    function downloadExcelTemplate() {
+        if (!state.currentRombel || !state.currentMapel) {
+            showToast('Pilih kelas terlebih dahulu.', 'error');
+            return;
+        }
+        if (typeof XLSX === 'undefined') {
+            showToast('Library Excel (SheetJS) belum termuat. Periksa koneksi internet Anda.', 'error');
+            return;
+        }
+
+        const rombelName = state.currentRombel.name;
+        const sheetName = sanitizeExcelSheetName(rombelName);
+        const studentsToExport = state.currentStudents.slice(0, 50); // Maksimal 50 baris siswa
+
+        // Header kolom: No, Nama Siswa, Nama Kelas, TP 1..TP 10 lengkap, PSTS, PSAS
+        const headers = [
+            'No',
+            'Nama Siswa',
+            'Nama Kelas',
+            'TP 1', 'TP 2', 'TP 3', 'TP 4', 'TP 5',
+            'TP 6', 'TP 7', 'TP 8', 'TP 9', 'TP 10',
+            'PSTS',
+            'PSAS'
+        ];
+
+        const sheetRows = [headers];
+
+        studentsToExport.forEach((st, idx) => {
+            const sc = state.scoresByStudent[st.id] || { uh: {}, psts: null, psas: null };
+            const row = [idx + 1, st.full_name, rombelName];
+
+            for (let t = 0; t < 10; t++) {
+                const cp = state.currentCps[t];
+                if (cp && sc.uh[cp.id] !== null && sc.uh[cp.id] !== undefined) {
+                    row.push(sc.uh[cp.id]);
+                } else {
+                    row.push('');
+                }
+            }
+
+            row.push(sc.psts !== null && sc.psts !== undefined ? sc.psts : '');
+            row.push(sc.psas !== null && sc.psas !== undefined ? sc.psas : '');
+            sheetRows.push(row);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+
+        // Atur lebar kolom agar rapi saat dibuka di Excel
+        ws['!cols'] = [
+            { wch: 5 },   // No
+            { wch: 30 },  // Nama Siswa
+            { wch: 14 },  // Nama Kelas
+            { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
+            { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
+            { wch: 9 },   // PSTS
+            { wch: 9 }    // PSAS
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+        const mapelName = state.currentMapel.name || 'Mapel';
+        const rawFileName = `${mapelName} - ${rombelName}`;
+        const safeFileName = rawFileName.replace(/[\\/:*?"<>|]/g, '_').trim() + '.xlsx';
+        XLSX.writeFile(wb, safeFileName);
+        showToast(`Template "${safeFileName}" berhasil diunduh (maks. 50 siswa).`, 'success');
+    }
+
+    // =========================================================================
+    // 12. IMPORT / REFISI NILAI DARI EXCEL DENGAN VALIDASI KETAT
+    // =========================================================================
+    function triggerImportExcel() {
+        if (!state.currentRombel) {
+            showToast('Pilih kelas terlebih dahulu.', 'error');
+            return;
+        }
+        if (state.isCurrentClassFinalized) {
+            showToast('Kelas ini sudah difinalisasi. Buka finalisasi terlebih dahulu untuk upload nilai.', 'error');
+            return;
+        }
+        const fileInput = document.getElementById('excelFileInput');
+        fileInput.value = '';
+        fileInput.click();
+    }
+
+    function showImportValidationErrors(errors) {
+        const listEl = document.getElementById('importErrorList');
+        const maxDisplay = 25;
+        let html = errors.slice(0, maxDisplay).map(err => `<li>• ${escapeHtml(err)}</li>`).join('');
+        if (errors.length > maxDisplay) {
+            html += `<li><strong>...dan ${errors.length - maxDisplay} kesalahan lainnya.</strong></li>`;
+        }
+        listEl.innerHTML = html;
+        openModal('modalImportError');
+    }
+
+    function handleExcelFileSelected(event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        if (!/\.(xlsx|xls)$/i.test(file.name)) {
+            showImportValidationErrors(['Format file harus Excel (.xlsx atau .xls).']);
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                validateAndApplyImportedWorkbook(workbook);
+            } catch (err) {
+                console.error('Gagal membaca file Excel:', err);
+                showImportValidationErrors(['File Excel rusak atau tidak dapat dibaca: ' + (err.message || 'Error')]);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function validateAndApplyImportedWorkbook(workbook) {
+        const errors = [];
+        const expectedSheet = sanitizeExcelSheetName(state.currentRombel.name);
+        const matchedSheetName = workbook.SheetNames.find(
+            sn => sn.trim().toLowerCase() === expectedSheet.trim().toLowerCase()
+        );
+
+        // 1. Validasi Nama Sheet
+        if (!matchedSheetName) {
+            errors.push(
+                `Nama sheet tidak sesuai! Seharusnya "${expectedSheet}", tetapi file berisi sheet: "${workbook.SheetNames.join(', ')}".`
+            );
+            showImportValidationErrors(errors);
+            return;
+        }
+
+        const ws = workbook.Sheets[matchedSheetName];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+        if (!rows || rows.length < 2) {
+            errors.push('File Excel kosong atau tidak memiliki baris data siswa.');
+            showImportValidationErrors(errors);
+            return;
+        }
+
+        // 2. Validasi Header Kolom
+        const headerRow = rows[0].map(h => String(h || '').trim().toUpperCase());
+        const findCol = (candidates) => headerRow.findIndex(h => candidates.includes(h));
+
+        const colNamaSiswa = findCol(['NAMA SISWA', 'NAMA', 'NAMA LENGKAP']);
+        const colNamaKelas = findCol(['NAMA KELAS', 'KELAS', 'ROMBEL']);
+        const colPsts = findCol(['PSTS', 'PTS', 'STS']);
+        const colPsas = findCol(['PSAS', 'PAS', 'SAS']);
+
+        const tpColIndices = [];
+        for (let t = 1; t <= 10; t++) {
+            tpColIndices.push(findCol([`TP ${t}`, `TP${t}`, `UH ${t}`, `UH${t}`]));
+        }
+
+        if (colNamaSiswa === -1) {
+            errors.push('Kolom "Nama Siswa" tidak ditemukan pada baris header template.');
+        }
+        if (colPsts === -1) {
+            errors.push('Kolom "PSTS" tidak ditemukan pada baris header template.');
+        }
+        if (colPsas === -1) {
+            errors.push('Kolom "PSAS" tidak ditemukan pada baris header template.');
+        }
+        for (let t = 0; t < state.currentCps.length; t++) {
+            if (tpColIndices[t] === -1) {
+                errors.push(`Kolom "TP ${t + 1}" tidak ditemukan pada baris header template.`);
+            }
+        }
+
+        if (errors.length > 0) {
+            showImportValidationErrors(errors);
+            return;
+        }
+
+        // Ambil baris data non-kosong (maks 50 baris)
+        const dataRows = rows.slice(1).filter(r =>
+            r.some(cell => String(cell ?? '').trim() !== '')
+        );
+
+        const expectedStudents = state.currentStudents.slice(0, 50);
+
+        // 3. Validasi Jumlah & Daftar Nama Siswa
+        if (dataRows.length !== expectedStudents.length) {
+            errors.push(
+                `Jumlah baris siswa tidak sesuai! Kelas ${state.currentRombel.name} memiliki ${expectedStudents.length} siswa, tetapi file Excel berisi ${dataRows.length} baris.`
+            );
+        }
+
+        const expectedNameMap = new Map();
+        expectedStudents.forEach(st => {
+            expectedNameMap.set(st.full_name.trim().toLowerCase(), st);
+        });
+
+        const parsedUpdates = [];
+
+        dataRows.forEach((row, rIdx) => {
+            const excelRowNum = rIdx + 2;
+            const rawName = String(row[colNamaSiswa] ?? '').trim();
+
+            if (!rawName) {
+                errors.push(`Baris ${excelRowNum}: Nama Siswa kosong.`);
+                return;
+            }
+
+            const matchedStudent = expectedNameMap.get(rawName.toLowerCase());
+            if (!matchedStudent) {
+                errors.push(`Baris ${excelRowNum}: Nama siswa "${rawName}" tidak terdaftar di kelas ${state.currentRombel.name}.`);
+                return;
+            }
+
+            // Jika kolom Nama Kelas ada & diisi, pastikan sesuai rombel aktif
+            if (colNamaKelas !== -1) {
+                const rawKelas = String(row[colNamaKelas] ?? '').trim();
+                if (rawKelas && rawKelas.toLowerCase() !== state.currentRombel.name.trim().toLowerCase()) {
+                    errors.push(`Baris ${excelRowNum}: Nama Kelas "${rawKelas}" tidak sesuai dengan kelas aktif "${state.currentRombel.name}".`);
+                }
+            }
+
+            const validateScoreCell = (rawVal, label) => {
+                // Siswa yang tidak ada nilainya / kosong tetap diterima
+                const parsed = parseStrictNumber(rawVal);
+                if (parsed.empty) return null;
+                if (!parsed.valid) {
+                    errors.push(`Baris ${excelRowNum} (${matchedStudent.full_name}) kolom ${label}: "${rawVal}" bukan angka yang valid.`);
+                    return null;
+                }
+                if (parsed.value < 0 || parsed.value > state.scaleMax) {
+                    errors.push(`Baris ${excelRowNum} (${matchedStudent.full_name}) kolom ${label}: nilai ${parsed.value} di luar rentang (${state.scaleLabel}).`);
+                    return null;
+                }
+                return parsed.value;
+            };
+
+            const uhValues = {};
+            state.currentCps.forEach((cp, tIdx) => {
+                const colIdx = tpColIndices[tIdx];
+                uhValues[cp.id] = validateScoreCell(row[colIdx], `TP ${tIdx + 1}`);
+            });
+
+            const pstsVal = validateScoreCell(row[colPsts], 'PSTS');
+            const psasVal = validateScoreCell(row[colPsas], 'PSAS');
+
+            parsedUpdates.push({
+                studentId: matchedStudent.id,
+                uh: uhValues,
+                psts: pstsVal,
+                psas: psasVal
+            });
+        });
+
+        // Jika ada 1 saja error validasi -> TOLAK seluruh import & tampilkan keterangan detail
+        if (errors.length > 0) {
+            showImportValidationErrors(errors);
+            return;
+        }
+
+        // 4. Semua Validasi Lolos -> Terapkan ke Tabel
+        parsedUpdates.forEach(item => {
+            const bucket = state.scoresByStudent[item.studentId];
+            if (!bucket) return;
+            bucket.uh = { ...bucket.uh, ...item.uh };
+            bucket.psts = item.psts;
+            bucket.psas = item.psas;
+        });
+
+        state.hasImportedOrExisting = true;
+        updateImportButtonLabel();
+        setUnsavedChanges(true);
+        recalculateAllScores();
+        renderGradeTable();
+
+        showToast(
+            `Berhasil import nilai untuk ${parsedUpdates.length} siswa! Periksa tabel lalu klik "Simpan Nilai".`,
+            'success'
+        );
+    }
+
+    // =========================================================================
+    // 13. FINALISASI NILAI & BUKA FINALISASI (VERIFIKASI KODE AKSES SEKOLAH)
+    // =========================================================================
+    function updateDropdownOptionLockLabel(optionKey, isFinalized) {
+        const selectEl = document.getElementById('classSelect');
+        if (!selectEl) return;
+        const optEl = Array.from(selectEl.options).find(o => o.value === optionKey);
+        const dataOpt = state.classOptions.find(o => o.key === optionKey);
+        if (optEl && dataOpt) {
+            const lockMark = isFinalized ? '🔒 ' : '';
+            optEl.textContent = `${lockMark}${dataOpt.rombel.name} — ${dataOpt.mapel.name} (${dataOpt.tpCount} TP)`;
+        }
+    }
+
+    function onFinalisasiButtonClick() {
+        if (!state.currentRombel || !state.currentMapel) {
+            showToast('Pilih kelas terlebih dahulu.', 'error');
+            return;
+        }
+
+        const classLabel = `${state.currentRombel.name} — ${state.currentMapel.name}`;
+
+        if (!state.isCurrentClassFinalized) {
+            // Mode: Finalisasi Nilai
+            document.getElementById('finalisasiClassChip').textContent = `📚 ${classLabel}`;
+            const unsavedNote = document.getElementById('finalisasiUnsavedNote');
+            if (unsavedNote) {
+                unsavedNote.style.display = state.hasUnsavedChanges ? 'block' : 'none';
+            }
+            openModal('modalConfirmFinalisasi');
+        } else {
+            // Mode: Buka Finalisasi (membutuhkan Kode Akses Sekolah)
+            document.getElementById('bukaFinalisasiClassChip').textContent = `📚 ${classLabel}`;
+            const codeInput = document.getElementById('inputKodeAksesSekolah');
+            const errText = document.getElementById('kodeAksesErrorText');
+            if (codeInput) codeInput.value = '';
+            if (errText) errText.classList.remove('show');
+            openModal('modalBukaFinalisasi');
+            setTimeout(() => { if (codeInput) codeInput.focus(); }, 100);
+        }
+    }
+
+    async function persistFinalizationStatus(isFinalized) {
+        const nowIso = isFinalized ? new Date().toISOString() : null;
+        const rombelId = state.currentRombel.id;
+        const mapelId = state.currentMapel.id;
+        const guruId = (state.currentAssignment && state.currentAssignment.guru_id) || state.guruRecord.id;
+        const activeYearId = state.activeYear ? state.activeYear.id : null;
+        const semId = state.activeSemester ? state.activeSemester.id : null;
+
+        // 1. Cari baris teaching_assignments yang sudah ada untuk rombel + mapel aktif
+        let targetId = state.currentAssignment && state.currentAssignment.id ? state.currentAssignment.id : null;
+        if (!targetId) {
+            let findQ = db.from('teaching_assignments')
+                .select('*')
+                .eq('school_id', state.schoolId)
+                .eq('rombel_id', rombelId)
+                .eq('mapel_id', mapelId);
+            if (activeYearId) findQ = findQ.eq('academic_year_id', activeYearId);
+            const { data: foundRows, error: findErr } = await findQ;
+            if (findErr) throw findErr;
+            if (foundRows && foundRows.length > 0) {
+                const matched = foundRows.find(r => state.myGuruIds.includes(r.guru_id)) || foundRows[0];
+                targetId = matched.id;
+            }
+        }
+
+        if (targetId) {
+            const { data: updRows, error: updErr } = await db
+                .from('teaching_assignments')
+                .update({ is_finalized: isFinalized, finalized_at: nowIso })
+                .eq('id', targetId)
+                .select('*');
+            if (updErr) throw updErr;
+            if (!updRows || updRows.length === 0) {
+                throw new Error('Gagal memperbarui status finalisasi pada tabel teaching_assignments (periksa policy RLS di Supabase).');
+            }
+            return updRows[0];
+        } else {
+            // Jika assignment berasal dari fallback gurus.rombel_ids, buat baris teaching_assignments baru
+            const payload = {
+                school_id: state.schoolId,
+                guru_id: guruId,
+                mapel_id: mapelId,
+                rombel_id: rombelId,
+                academic_year_id: activeYearId,
+                is_finalized: isFinalized,
+                finalized_at: nowIso
+            };
+            if (semId) payload.semester_id = semId;
+
+            let { data: insRows, error: insErr } = await db
+                .from('teaching_assignments')
+                .insert([payload])
+                .select('*');
+
+            // Fallback jika kolom semester_id tidak tersedia pada skema teaching_assignments
+            if (insErr && semId && String(insErr.message || '').toLowerCase().includes('semester_id')) {
+                delete payload.semester_id;
+                const retry = await db.from('teaching_assignments').insert([payload]).select('*');
+                insRows = retry.data;
+                insErr = retry.error;
+            }
+            if (insErr) throw insErr;
+            return insRows && insRows[0] ? insRows[0] : payload;
+        }
+    }
+
+    async function confirmFinalizeCurrentClass() {
+        if (!state.currentRombel || !state.currentMapel) return;
+        const btn = document.getElementById('btnConfirmFinalisasi');
+        btn.disabled = true;
+        btn.textContent = 'Memproses...';
+
+        try {
+            // Jika ada perubahan yang belum disimpan, simpan otomatis terlebih dahulu
+            if (state.hasUnsavedChanges) {
+                const savedOk = await saveCurrentRombelGrades();
+                if (!savedOk) {
+                    btn.disabled = false;
+                    btn.textContent = '🔒 Ya, Finalisasi Sekarang';
+                    return;
+                }
+            }
+
+            const updatedAssignment = await persistFinalizationStatus(true);
+            state.currentAssignment = updatedAssignment;
+            state.isCurrentClassFinalized = true;
+
+            const opt = state.classOptions.find(o => o.key === state.selectedOptionKey);
+            if (opt) opt.assignment = updatedAssignment;
+            updateDropdownOptionLockLabel(state.selectedOptionKey, true);
+
+            applyFinalizationUIState();
+            closeModal('modalConfirmFinalisasi');
+            showToast(
+                `Nilai ${state.currentMapel.name} kelas ${state.currentRombel.name} berhasil difinalisasi dan kini tampil di Legger Nilai!`,
+                'success'
+            );
+        } catch (err) {
+            console.error('Gagal finalisasi nilai:', err);
+            showToast('Gagal finalisasi nilai: ' + (err.message || 'Error'), 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🔒 Ya, Finalisasi Sekarang';
+        }
+    }
+
+    async function confirmUnfinalizeCurrentClass() {
+        if (!state.currentRombel || !state.currentMapel) return;
+
+        const codeInput = document.getElementById('inputKodeAksesSekolah');
+        const errText = document.getElementById('kodeAksesErrorText');
+        const enteredCode = String(codeInput ? codeInput.value : '').trim().toUpperCase();
+
+        if (!enteredCode) {
+            if (errText) {
+                errText.textContent = 'Silakan masukkan Kode Akses Sekolah terlebih dahulu.';
+                errText.classList.add('show');
+            }
+            if (codeInput) codeInput.focus();
+            return;
+        }
+
+        const btn = document.getElementById('btnConfirmBukaFinalisasi');
+        btn.disabled = true;
+        btn.textContent = 'Memverifikasi...';
+        if (errText) errText.classList.remove('show');
+
+        try {
+            // Verifikasi Kode Akses Sekolah ke tabel schools di Supabase
+            const { data: schoolData, error: schoolErr } = await db
+                .from('schools')
+                .select('access_code')
+                .eq('id', state.schoolId)
+                .single();
+
+            if (schoolErr || !schoolData) {
+                throw new Error('Gagal memverifikasi Kode Akses Sekolah dari database.');
+            }
+
+            const validCode = String(schoolData.access_code || '').trim().toUpperCase();
+            if (!validCode || enteredCode !== validCode) {
+                if (errText) {
+                    errText.textContent = 'Kode Akses Sekolah salah! Finalisasi tidak dapat dibuka.';
+                    errText.classList.add('show');
+                }
+                if (codeInput) {
+                    codeInput.focus();
+                    codeInput.select();
+                }
+                return;
+            }
+
+            // Kode akses benar -> buka finalisasi khusus kelas & mapel aktif
+            const updatedAssignment = await persistFinalizationStatus(false);
+            state.currentAssignment = updatedAssignment;
+            state.isCurrentClassFinalized = false;
+
+            const opt = state.classOptions.find(o => o.key === state.selectedOptionKey);
+            if (opt) opt.assignment = updatedAssignment;
+            updateDropdownOptionLockLabel(state.selectedOptionKey, false);
+
+            applyFinalizationUIState();
+            closeModal('modalBukaFinalisasi');
+            showToast(
+                `Finalisasi kelas ${state.currentRombel.name} berhasil dibuka. Semua kotak isian kembali normal.`,
+                'success'
+            );
+        } catch (err) {
+            console.error('Gagal membuka finalisasi:', err);
+            if (errText) {
+                errText.textContent = err.message || 'Terjadi kesalahan saat memverifikasi kode akses.';
+                errText.classList.add('show');
+            }
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🔓 Verifikasi & Buka Finalisasi';
+        }
+    }
+</script>
+</body>
+</html>

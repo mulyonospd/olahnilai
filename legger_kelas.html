@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legger Nilai Kelas - Sistem Nilai Pro</title>
+    <!-- LIBRARY SUPABASE, CONFIG, DAN SHEETJS UNTUK EXPORT EXCEL (.XLSX) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <script src="config.js"></script>
+
+    <style>
+        /* =====================================================================
+           1. VARIABEL TEMA (SINKRON DENGAN DASHBOARD GURU - DARK & LIGHT MODE)
+           ===================================================================== */
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-body: linear-gradient(135deg, #070b14 0%, #111827 50%, #0f172a 100%);
+            --header-bg: linear-gradient(135deg, #020617 0%, #1e1b4b 55%, #0f172a 100%);
+            --card-bg: #1e293b;
+            --card-header-bg: #0f172a;
+            --surface-soft: #172033;
+            --border-color: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+
+            /* Warna latar solid untuk kolom & baris yang terkunci (sticky) agar tidak tembus */
+            --sticky-th-bg: #0f172a;
+            --sticky-td-bg: #1e293b;
+            --sticky-td-hover: #263449;
+            --sticky-tfoot-bg: #162235;
+            --rank1-bg: #36331e;
+            --rank2-bg: #2a3444;
+            --rank3-bg: #382a1e;
+
+            /* Warna penanda nilai di bawah KKM */
+            --below-kkm-bg: rgba(239, 68, 68, 0.24);
+            --below-kkm-text: #fca5a5;
+            --kkm-text: #34d399;
+            --unfinal-text: #fbbf24;
+            --sticky-shadow: 3px 0 8px -2px rgba(0, 0, 0, 0.45);
+        }
+
+        [data-theme="light"] {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #059669;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --bg-body: linear-gradient(135deg, #e0e7ff 0%, #f1f5f9 50%, #dbeafe 100%);
+            --header-bg: linear-gradient(135deg, #1e3a8a 0%, #312e81 55%, #1e293b 100%);
+            --card-bg: #ffffff;
+            --card-header-bg: #f1f5f9;
+            --surface-soft: #f8fafc;
+            --border-color: #cbd5e1;
+            --text-main: #0f172a;
+            --text-muted: #475569;
+
+            /* Warna latar solid untuk kolom & baris yang terkunci (sticky) di Light Mode */
+            --sticky-th-bg: #f1f5f9;
+            --sticky-td-bg: #ffffff;
+            --sticky-td-hover: #f8fafc;
+            --sticky-tfoot-bg: #e2e8f0;
+            --rank1-bg: #fef9c3;
+            --rank2-bg: #e2e8f0;
+            --rank3-bg: #ffedd5;
+
+            /* Warna penanda nilai di bawah KKM */
+            --below-kkm-bg: rgba(239, 68, 68, 0.14);
+            --below-kkm-text: #dc2626;
+            --kkm-text: #059669;
+            --unfinal-text: #d97706;
+            --sticky-shadow: 3px 0 8px -2px rgba(15, 23, 42, 0.16);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        /* =====================================================================
+           2. LAYOUT VIEWPORT PENUH (HEADER & FOOTER TERKUNCI, TABEL BISA SCROLL)
+           ===================================================================== */
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            padding: 12px 16px 10px 16px;
+            gap: 10px;
+        }
+
+        /* =====================================================================
+           3. HEADER HALAMAN LEGGER (TERKUNCI DI ATAS)
+           ===================================================================== */
+        .page-header {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: var(--header-bg);
+            color: #ffffff;
+            padding: 12px 20px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+            z-index: 40;
+        }
+
+        .page-header h1 {
+            font-size: 1.2rem;
+            font-weight: 800;
+            line-height: 1.25;
+        }
+
+        .page-header p {
+            font-size: 0.82rem;
+            color: #cbd5e1;
+            margin-top: 3px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: var(--primary);
+            color: #ffffff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: filter 0.2s, transform 0.15s, background-color 0.2s;
+        }
+        button:hover:not(:disabled) {
+            filter: brightness(1.07);
+            transform: translateY(-1px);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-success { background: var(--success); }
+        .btn-outline {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* =====================================================================
+           4. KARTU UTAMA & TABEL LEGGER (STICKY HEADER & STICKY KOLOM NAMA)
+           ===================================================================== */
+        .card {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+            overflow: hidden;
+        }
+
+        .table-wrap {
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+            overflow: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            position: relative;
+            background: var(--card-bg);
+        }
+
+        /* Border-collapse separate wajib agar border sel sticky tidak hilang saat scroll */
+        table {
+            width: max-content;
+            min-width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.83rem;
+        }
+
+        th, td {
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px 8px;
+        }
+
+        th:last-child, td:last-child {
+            border-right: none;
+        }
+
+        /* Baris judul kolom (baris ke-1) terkunci di atas saat scroll ke bawah */
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: var(--sticky-th-bg);
+            color: var(--text-main);
+            font-weight: 800;
+            text-align: center;
+            vertical-align: middle;
+            white-space: nowrap;
+            line-height: 1.25;
+        }
+
+        tbody td {
+            background: var(--sticky-td-bg);
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+
+        tbody tr:hover td {
+            background: var(--sticky-td-hover);
+        }
+
+        /* Kunci Kolom No & Kolom Nama Siswa saat scroll kanan-kiri */
+        .col-no {
+            position: sticky;
+            left: 0;
+            width: 46px;
+            min-width: 46px;
+            max-width: 46px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .col-name {
+            position: sticky;
+            left: 46px;
+            width: 225px;
+            min-width: 195px;
+            max-width: 240px;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            z-index: 10;
+            box-shadow: var(--sticky-shadow);
+        }
+
+        /* Sudut kiri atas (Header No & Header Nama Siswa) selalu paling atas */
+        thead th.col-no,
+        thead th.col-name {
+            z-index: 35;
+            background: var(--sticky-th-bg);
+        }
+
+        /* Lebar kolom mapel diseragamkan agar rapi */
+        .col-mapel {
+            width: 84px;
+            min-width: 84px;
+            max-width: 84px;
+            text-align: center;
+        }
+
+        .mapel-code {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 800;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .mapel-sub {
+            display: block;
+            font-size: 0.68rem;
+            font-weight: 600;
+            margin-top: 2px;
+            white-space: nowrap;
+        }
+
+        .mapel-sub.kkm-text {
+            color: var(--kkm-text);
+        }
+
+        .mapel-sub.unfinal-text {
+            color: var(--unfinal-text);
+        }
+
+        /* Kolom Rekap Kanan */
+        .col-total {
+            width: 92px;
+            min-width: 92px;
+            text-align: center;
+        }
+        .col-avg {
+            width: 82px;
+            min-width: 82px;
+            text-align: center;
+        }
+        .col-rank {
+            width: 78px;
+            min-width: 78px;
+            text-align: center;
+        }
+
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+
+        /* Penanda Baris Peringkat 1, 2, 3 */
+        tbody tr.rank-1 td,
+        tbody tr.rank-1:hover td {
+            background: var(--rank1-bg);
+            font-weight: 700;
+        }
+        tbody tr.rank-2 td,
+        tbody tr.rank-2:hover td {
+            background: var(--rank2-bg);
+            font-weight: 700;
+        }
+        tbody tr.rank-3 td,
+        tbody tr.rank-3:hover td {
+            background: var(--rank3-bg);
+            font-weight: 700;
+        }
+
+        /* Badge Peringkat (Hanya Angka 1, 2, 3 tanpa ikon & tanpa kata Juara) */
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 26px;
+            height: 24px;
+            padding: 0 7px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+        .rank-badge-1 { background: #eab308; color: #0f172a; }
+        .rank-badge-2 { background: #cbd5e1; color: #0f172a; }
+        .rank-badge-3 { background: #d97706; color: #ffffff; }
+
+        /* Penanda Nilai Di Bawah KKM (Merah) */
+        tbody td.below-kkm,
+        tbody tr.rank-1 td.below-kkm,
+        tbody tr.rank-2 td.below-kkm,
+        tbody tr.rank-3 td.below-kkm {
+            background: var(--below-kkm-bg) !important;
+            color: var(--below-kkm-text) !important;
+            font-weight: 800;
+        }
+
+        .unfinalized-cell {
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 0.78rem;
+        }
+
+        /* =====================================================================
+           5. BARIS REKAP BAWAH TABEL (JUMLAH NILAI & RATA-RATA)
+           ===================================================================== */
+        tfoot td {
+            background: var(--sticky-tfoot-bg);
+            color: var(--text-main);
+            font-weight: 800;
+            border-top: 2px solid var(--border-color);
+            text-align: center;
+        }
+
+        tfoot tr + tr td {
+            border-top: 1px solid var(--border-color);
+        }
+
+        tfoot td.tfoot-label {
+            position: sticky;
+            left: 0;
+            z-index: 15;
+            background: var(--sticky-tfoot-bg);
+            text-align: right;
+            padding-right: 12px;
+            box-shadow: var(--sticky-shadow);
+            white-space: nowrap;
+        }
+
+        /* =====================================================================
+           6. FOOTER HALAMAN (TERKUNCI DI BAWAH, PROPORSIONAL & SEBARIS)
+           ===================================================================== */
+        .page-footer {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 7px 14px;
+            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.14);
+            z-index: 40;
+        }
+
+        .footer-left {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .theme-toggle-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--surface-soft);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 5px 11px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .theme-toggle-btn:hover {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+            transform: none;
+        }
+
+        .footer-info {
+            flex: 1;
+            min-width: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 4px 10px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .footer-info strong {
+            color: var(--text-main);
+        }
+
+        .footer-divider {
+            color: var(--border-color);
+            font-weight: 700;
+        }
+
+        .footer-stats {
+            color: var(--text-main);
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        /* =====================================================================
+           7. SWITCH ON/OFF MODE NILAI (NILAI ASLI VS NILAI JADI)
+           ===================================================================== */
+        .footer-right {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .score-switch-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface-soft);
+            border: 1px solid var(--border-color);
+            padding: 4px 11px;
+            border-radius: 999px;
+            user-select: none;
+        }
+
+        .switch-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+            white-space: nowrap;
+        }
+
+        .switch-label.active {
+            color: var(--primary);
+            font-weight: 800;
+        }
+
+        .switch-control {
+            position: relative;
+            display: inline-block;
+            width: 38px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .switch-control input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .switch-slider {
+            position: absolute;
+            inset: 0;
+            background-color: var(--border-color);
+            border-radius: 999px;
+            transition: background-color 0.22s ease;
+        }
+
+        .switch-slider::before {
+            content: "";
+            position: absolute;
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            top: 3px;
+            background-color: #ffffff;
+            border-radius: 50%;
+            transition: transform 0.22s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+        }
+
+        .switch-control input:checked + .switch-slider {
+            background-color: var(--success);
+        }
+
+        .switch-control input:checked + .switch-slider::before {
+            transform: translateX(18px);
+        }
+
+        /* =====================================================================
+           8. RESPONSIF UNTUK LAYAR HP / TABLET
+           ===================================================================== */
+        @media (max-width: 768px) {
+            body {
+                padding: 8px;
+                gap: 8px;
+            }
+            .page-header {
+                padding: 10px 12px;
+            }
+            .page-header h1 {
+                font-size: 1rem;
+            }
+            .page-header p {
+                font-size: 0.75rem;
+            }
+            button {
+                padding: 6px 10px;
+                font-size: 0.78rem;
+            }
+            .col-no {
+                width: 36px;
+                min-width: 36px;
+                max-width: 36px;
+            }
+            .col-name {
+                left: 36px;
+                width: 150px;
+                min-width: 140px;
+                max-width: 160px;
+            }
+            .col-mapel {
+                width: 74px;
+                min-width: 74px;
+                max-width: 74px;
+            }
+            .page-footer {
+                padding: 6px 10px;
+                justify-content: center;
+                gap: 6px 10px;
+            }
+            .footer-info {
+                order: 3;
+                width: 100%;
+                font-size: 0.72rem;
+            }
+            .footer-divider {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- =======================================================================
+         BAGIAN 1: HEADER HALAMAN LEGGER (TERKUNCI DI ATAS)
+         ======================================================================= -->
+    <header class="page-header">
+        <div>
+            <h1 id="leggerTitle">Legger Nilai Kelas ... Tahun ... Semester ...</h1>
+            <p id="leggerSubtitle">Memuat informasi sekolah dan wali kelas...</p>
+        </div>
+        <div class="header-actions">
+            <button type="button" class="btn-outline" onclick="window.location.href='guru_dashboard.html'">
+                ← Kembali ke Dashboard
+            </button>
+            <button type="button" class="btn-success" id="btnExportExcel" disabled onclick="exportLeggerToXlsx()">
+                📥 Export Excel (.xlsx)
+            </button>
+        </div>
+    </header>
+
+    <!-- =======================================================================
+         BAGIAN 2: KONTEN UTAMA TABEL LEGGER (HEADER & KOLOM NAMA TERKUNCI)
+         ======================================================================= -->
+    <main class="card">
+        <div class="table-wrap">
+            <table id="leggerTable">
+                <thead id="leggerThead">
+                    <tr><th>Memuat kolom mata pelajaran...</th></tr>
+                </thead>
+                <tbody id="leggerTbody">
+                    <tr><td class="text-center">Sedang mengambil data legger nilai...</td></tr>
+                </tbody>
+                <tfoot id="leggerTfoot"></tfoot>
+            </table>
+        </div>
+    </main>
+
+    <!-- =======================================================================
+         BAGIAN 3: FOOTER HALAMAN (GANTI TEMA, KETERANGAN, STATS, SWITCH NILAI)
+         ======================================================================= -->
+    <footer class="page-footer">
+        <div class="footer-left">
+            <button type="button" class="theme-toggle-btn" id="btnThemeToggle" onclick="toggleTheme()">
+                <span id="themeIcon">☀️</span>
+                <span id="themeText">Mode Terang</span>
+            </button>
+        </div>
+
+        <div class="footer-info">
+            <span>ℹ️ Nilai yang ditampilkan pada legger ini <strong>hanya nilai yang sudah di-Finalisasi</strong> oleh masing-masing guru mata pelajaran.</span>
+            <span class="footer-divider">|</span>
+            <span class="footer-stats" id="leggerStats">Memuat statistik...</span>
+        </div>
+
+        <div class="footer-right">
+            <div class="score-switch-wrap" title="Ganti tampilan antara Nilai Asli dan Nilai Jadi">
+                <span class="switch-label" id="labelNilaiAsli" onclick="setScoreMode('asli')">Nilai Asli</span>
+                <label class="switch-control" aria-label="Switch Nilai Asli atau Nilai Jadi">
+                    <input type="checkbox" id="toggleScoreMode" checked onchange="onScoreModeToggle(this)">
+                    <span class="switch-slider"></span>
+                </label>
+                <span class="switch-label active" id="labelNilaiJadi" onclick="setScoreMode('jadi')">Nilai Jadi</span>
+            </div>
+        </div>
+    </footer>
+
+<script>
+    // =========================================================================
+    // 1. INISIALISASI TEMA, SUPABASE & STATE APLIKASI
+    // =========================================================================
+    function getSupabaseClient() {
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) return supabaseClient;
+        if (typeof _supabase !== 'undefined' && _supabase) return _supabase;
+        if (window.supabaseClient) return window.supabaseClient;
+        if (typeof supabase !== 'undefined' && typeof supabase.from === 'function') return supabase;
+        if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined' && window.supabase) {
+            return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+        return null;
+    }
+
+    const db = getSupabaseClient();
+    const leggerState = {
+        rombel: null,
+        context: null,
+        varGlobal: null,
+        gradingConfig: null,
+        scaleMax: 100,
+        decimalPlaces: 0,
+        mapels: [],
+        finalizedMapelIds: new Set(),
+        assignmentByMapel: {},
+        cps: [],
+        students: [],
+        grades: [],
+        computedByMapel: {}, // Cache hasil perhitungan identik halaman input nilai: { [mapelId]: { [studentId]: { nilaiAsli, nilaiJadi } } }
+        scoreMode: 'jadi',   // Default tampilan adalah Nilai Jadi ('jadi' atau 'asli')
+        rows: [],
+        summary: {
+            perMapelTotal: {},
+            perMapelAvg: {},
+            grandTotal: null,
+            avgOfTotals: null,
+            overallAvg: null
+        }
+    };
+
+    function applyTheme(theme) {
+        const valid = theme === 'light' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', valid);
+        localStorage.setItem('nilaiProTheme', valid);
+        localStorage.setItem('theme', valid);
+        document.getElementById('themeIcon').textContent = valid === 'dark' ? '☀️' : '🌙';
+        document.getElementById('themeText').textContent = valid === 'dark' ? 'Mode Terang' : 'Mode Gelap';
+    }
+
+    function toggleTheme() {
+        applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    }
+
+    function escapeHtml(str) {
+        return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // =========================================================================
+    // 2. HELPER KONFIGURASI SKALA, PEMBULATAN, KKM & BATAS KATROL PER MAPEL
+    //    (100% DISINKRONKAN DENGAN LOGIKA HALAMAN INPUT NILAI)
+    // =========================================================================
+    function parseJsonObjectSafe(raw) {
+        if (!raw) return {};
+        if (typeof raw === 'object' && !Array.isArray(raw)) return { ...raw };
+        if (typeof raw === 'string') {
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+            } catch (_) {}
+        }
+        return {};
+    }
+
+    function isValidScore(val) {
+        return val !== null && val !== undefined && val !== '' && Number.isFinite(Number(val));
+    }
+
+    function roundBySetting(num) {
+        if (num === null || num === undefined || isNaN(num)) return 0;
+        const factor = Math.pow(10, leggerState.decimalPlaces);
+        return Math.round((Number(num) + Number.EPSILON) * factor) / factor;
+    }
+
+    function formatDisplayNumber(num) {
+        if (num === null || num === undefined || isNaN(num)) return '-';
+        const rounded = roundBySetting(num);
+        return leggerState.decimalPlaces > 0 ? rounded.toFixed(leggerState.decimalPlaces) : String(Math.round(rounded));
+    }
+
+    function resolveGlobalScaleAndRounding() {
+        const vg = leggerState.varGlobal;
+        const gc = leggerState.gradingConfig;
+
+        // 1. Tentukan jumlah angka desimal (identik halaman input nilai)
+        let dec = 0;
+        if (vg && vg.jumlah_koma !== null && vg.jumlah_koma !== undefined && !isNaN(Number(vg.jumlah_koma))) {
+            dec = Math.max(0, Math.min(2, parseInt(vg.jumlah_koma, 10)));
+        } else if (gc && gc.decimal_places !== null && gc.decimal_places !== undefined && !isNaN(Number(gc.decimal_places))) {
+            dec = Math.max(0, Math.min(2, parseInt(gc.decimal_places, 10)));
+        } else if (vg && vg.format_nilai) {
+            const fmt = String(vg.format_nilai).toLowerCase();
+            if (fmt.includes('2')) dec = 2;
+            else if (fmt.includes('1')) dec = 1;
+            else dec = 0;
+        }
+        leggerState.decimalPlaces = dec;
+
+        // 2. Tentukan skala nilai maksimum (0-100, 0-10, atau 0-4)
+        const scaleRaw = String((gc && gc.scale_type) || (vg && vg.format_nilai) || '').toLowerCase();
+        if (scaleRaw.includes('satuan') || scaleRaw.includes('0-10') || scaleRaw.includes('10')) {
+            leggerState.scaleMax = !scaleRaw.includes('100') ? 10 : 100;
+        } else if (scaleRaw.includes('0-4') || scaleRaw.includes('skala 4')) {
+            leggerState.scaleMax = 4;
+        } else {
+            leggerState.scaleMax = 100;
+        }
+    }
+
+    function extractJsonbByTingkat(jsonbRaw, tingkat) {
+        const jsonbObj = parseJsonObjectSafe(jsonbRaw);
+        if (!jsonbObj || typeof jsonbObj !== 'object') return null;
+
+        const tKey = String(tingkat ?? '').trim();
+        if (tKey && jsonbObj[tKey] !== undefined && jsonbObj[tKey] !== null && jsonbObj[tKey] !== '') {
+            const parsed = Number(jsonbObj[tKey]);
+            if (Number.isFinite(parsed)) return parsed;
+        }
+
+        const numMatch = tKey.match(/\d+/);
+        const tNum = numMatch ? numMatch[0] : '';
+        for (const [k, v] of Object.entries(jsonbObj)) {
+            if (v === null || v === undefined || v === '') continue;
+            const kClean = String(k).trim();
+            if (kClean.toLowerCase() === tKey.toLowerCase() || (tNum && kClean === tNum)) {
+                const parsed = Number(v);
+                if (Number.isFinite(parsed)) return parsed;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Mengambil konfigurasi KKM, Bobot (UH/PSTS/PSAS), serta Batas Katrol (nilai_min & nilai_max)
+     * untuk masing-masing mapel dan tingkat — 100% sama dengan resolveDefaultConfigForMapelTingkat()
+     * di halaman input nilai.
+     */
+    function resolveMapelConfig(mapel, tingkat, varGlobal, scaleMax) {
+        const numMatch = String(tingkat ?? '').match(/\d+/);
+        const tNum = numMatch ? parseInt(numMatch[0], 10) : 0;
+
+        // KKM per tingkat
+        let kkm = extractJsonbByTingkat(mapel?.kkm_per_tingkat, tingkat);
+        if (kkm === null) {
+            if (isValidScore(mapel?.kkm)) {
+                kkm = Number(mapel.kkm);
+            } else if (varGlobal) {
+                let idx = tNum;
+                if (tNum >= 7 && tNum <= 9) idx = tNum - 6;
+                else if (tNum >= 10 && tNum <= 12) idx = tNum - 9;
+
+                if (idx >= 1 && idx <= 6 && isValidScore(varGlobal[`kkm_${idx}`])) {
+                    kkm = Number(varGlobal[`kkm_${idx}`]);
+                } else if (isValidScore(varGlobal.kkm_1)) {
+                    kkm = Number(varGlobal.kkm_1);
+                }
+            }
+        }
+        if (kkm === null || !Number.isFinite(kkm)) kkm = 75;
+
+        // Bobot per mapel (fallback ke variabel_global lalu default 50/25/25)
+        const bobot_uh = Number(mapel?.bobot_uh ?? varGlobal?.bobot_uh ?? 50);
+        const bobot_psts = Number(mapel?.bobot_psts ?? varGlobal?.bobot_psts ?? 25);
+        const bobot_psas = Number(mapel?.bobot_psas ?? varGlobal?.bobot_psas ?? 25);
+
+        // Batas Min Katrol per mapel & tingkat
+        let nilai_min = extractJsonbByTingkat(mapel?.nilai_min_per_tingkat, tingkat);
+        if (nilai_min === null) {
+            if (varGlobal && isValidScore(varGlobal.nilai_min)) {
+                nilai_min = Number(varGlobal.nilai_min);
+            } else {
+                nilai_min = kkm;
+            }
+        }
+
+        // Batas Max Katrol per mapel & tingkat
+        let nilai_max = extractJsonbByTingkat(mapel?.nilai_max_per_tingkat, tingkat);
+        if (nilai_max === null) {
+            if (varGlobal && isValidScore(varGlobal.nilai_max)) {
+                nilai_max = Number(varGlobal.nilai_max);
+            } else {
+                nilai_max = Math.min(scaleMax, 95);
+            }
+        }
+
+        return { kkm, bobot_uh, bobot_psts, bobot_psas, nilai_min, nilai_max };
+    }
+
+    // =========================================================================
+    // 3. RUMUS PERHITUNGAN NILAI ASLI & NILAI JADI (PENGKATROLAN KETAT)
+    //    100% IDENTIK DENGAN recalculateAllScores() DI HALAMAN INPUT NILAI:
+    //    - Langkah 1: Nilai Asli muncul HANYA jika minimal 1 UH, PSTS, dan PSAS terisi.
+    //    - Langkah 2: Pengkatrolan ketat per mapel memakai nilai_min & nilai_max mapel tersebut.
+    //                 Nilai di atas targetMax TIDAK ikut dikatrol (dipertahankan apa adanya).
+    //                 Katrol hanya diterapkan jika actualMin < targetMin.
+    //    - Langkah 3: Tambahkan Nilai Tambahan (TAMBAHAN) ke Nilai Katrol, lalu clamp [0, scaleMax].
+    // =========================================================================
+    function computeMapelScoresForClass(mapel, students, allGrades, allCps, assignment, tingkat) {
+        const { bobot_uh, bobot_psts, bobot_psas, nilai_min, nilai_max } = mapel.config;
+        const totalBobot = (Number(bobot_uh) || 0) + (Number(bobot_psts) || 0) + (Number(bobot_psas) || 0);
+
+        // Saring CP yang aktif untuk mapel & tingkat ini (mengikuti halaman input nilai)
+        let mapelCps = (allCps || []).filter(
+            cp => cp.mapel_id === mapel.id && String(cp.tingkat) === String(tingkat)
+        );
+        if (assignment && assignment.guru_id && mapelCps.some(cp => cp.guru_id != null)) {
+            const guruCps = mapelCps.filter(cp => cp.guru_id === assignment.guru_id);
+            if (guruCps.length > 0) mapelCps = guruCps;
+        }
+        const validCpIdSet = new Set(mapelCps.map(cp => cp.id));
+
+        const rawResults = [];
+
+        // Langkah 1: Hitung Nilai Asli tiap siswa
+        students.forEach(st => {
+            const stMapelGrades = allGrades.filter(g => g.student_id === st.id && g.mapel_id === mapel.id);
+
+            const uhByCp = new Map();
+            let psts = null;
+            let psas = null;
+            let tambahan = null;
+
+            stMapelGrades.forEach(g => {
+                if (!isValidScore(g.score)) return;
+                const scoreVal = Number(g.score);
+                const gType = String(g.grade_type || '').trim().toUpperCase();
+
+                if (gType.startsWith('UH')) {
+                    if (validCpIdSet.size > 0) {
+                        if (g.cp_id && validCpIdSet.has(g.cp_id)) {
+                            uhByCp.set(g.cp_id, scoreVal);
+                        }
+                    } else {
+                        uhByCp.set(g.cp_id || g.id, scoreVal);
+                    }
+                } else if (['PSTS', 'PTS', 'STS'].includes(gType)) {
+                    psts = scoreVal;
+                } else if (['PSAS', 'PAS', 'SAS'].includes(gType)) {
+                    psas = scoreVal;
+                } else if (gType === 'TAMBAHAN') {
+                    tambahan = scoreVal;
+                }
+            });
+
+            const filledUhValues = Array.from(uhByCp.values());
+            const hasMinimalOneUh = filledUhValues.length >= 1;
+            const hasPsts = isValidScore(psts);
+            const hasPsas = isValidScore(psas);
+            const isEligibleNilaiAsli = hasMinimalOneUh && hasPsts && hasPsas && totalBobot > 0;
+            const tambahVal = isValidScore(tambahan) ? Number(tambahan) : 0;
+
+            if (!isEligibleNilaiAsli) {
+                rawResults.push({
+                    studentId: st.id,
+                    hasNilaiAsli: false,
+                    nilaiAsli: null,
+                    tambahVal,
+                    nilaiKatrol: null,
+                    nilaiJadi: null
+                });
+                return;
+            }
+
+            const sumUh = filledUhValues.reduce((acc, v) => acc + v, 0);
+            const avgUh = sumUh / filledUhValues.length;
+            const nilaiAsliRaw = ((avgUh * bobot_uh) + (Number(psts) * bobot_psts) + (Number(psas) * bobot_psas)) / totalBobot;
+            const nilaiAsli = roundBySetting(nilaiAsliRaw);
+
+            rawResults.push({
+                studentId: st.id,
+                hasNilaiAsli: true,
+                nilaiAsli,
+                tambahVal,
+                nilaiKatrol: nilaiAsli,
+                nilaiJadi: nilaiAsli
+            });
+        });
+
+        // Langkah 2: Sistem Pengkatrolan Ketat HANYA pada siswa yang sudah memiliki Nilai Asli
+        const withNilaiAsli = rawResults.filter(r => r.hasNilaiAsli && r.nilaiAsli !== null);
+        const targetMin = Number(nilai_min);
+        const targetMax = Number(nilai_max);
+        const canScale = Number.isFinite(targetMin) && Number.isFinite(targetMax) && targetMax > targetMin;
+
+        if (canScale && withNilaiAsli.length > 0) {
+            const eligibleKatrol = withNilaiAsli.filter(r => r.nilaiAsli <= targetMax);
+            if (eligibleKatrol.length > 0) {
+                const actualMin = Math.min(...eligibleKatrol.map(r => r.nilaiAsli));
+                const actualMax = Math.max(...eligibleKatrol.map(r => r.nilaiAsli));
+
+                // Katrol diterapkan hanya jika ada nilai di bawah targetMin
+                if (actualMin < targetMin) {
+                    eligibleKatrol.forEach(r => {
+                        let katrolVal;
+                        if (actualMax > actualMin) {
+                            katrolVal = targetMin + ((r.nilaiAsli - actualMin) / (actualMax - actualMin)) * (targetMax - targetMin);
+                        } else {
+                            katrolVal = targetMin;
+                        }
+                        // Pastikan ketat berada dalam rentang [targetMin, targetMax]
+                        katrolVal = Math.max(targetMin, Math.min(targetMax, katrolVal));
+                        r.nilaiKatrol = roundBySetting(katrolVal);
+                    });
+                }
+            }
+        }
+
+        // Langkah 3: Tambahkan Nilai Tambahan ke Nilai Jadi (HANYA jika Nilai Asli sudah ada)
+        withNilaiAsli.forEach(r => {
+            const combined = r.nilaiKatrol + r.tambahVal;
+            const clamped = Math.max(0, Math.min(leggerState.scaleMax, combined));
+            r.nilaiJadi = roundBySetting(clamped);
+        });
+
+        // Kembalikan map berdasarkan studentId
+        const resultByStudent = {};
+        rawResults.forEach(r => {
+            resultByStudent[r.studentId] = {
+                nilaiAsli: r.nilaiAsli,
+                nilaiJadi: r.nilaiJadi
+            };
+        });
+        return resultByStudent;
+    }
+
+    // =========================================================================
+    // 4. KONTROL SWITCH NILAI ASLI / NILAI JADI
+    // =========================================================================
+    function updateSwitchUI() {
+        const isJadi = leggerState.scoreMode === 'jadi';
+        document.getElementById('toggleScoreMode').checked = isJadi;
+        document.getElementById('labelNilaiAsli').classList.toggle('active', !isJadi);
+        document.getElementById('labelNilaiJadi').classList.toggle('active', isJadi);
+    }
+
+    function setScoreMode(mode) {
+        const nextMode = mode === 'asli' ? 'asli' : 'jadi';
+        if (leggerState.scoreMode === nextMode) return;
+        leggerState.scoreMode = nextMode;
+        updateSwitchUI();
+        recalculateAndRender();
+    }
+
+    function onScoreModeToggle(checkbox) {
+        leggerState.scoreMode = checkbox.checked ? 'jadi' : 'asli';
+        updateSwitchUI();
+        recalculateAndRender();
+    }
+
+    // =========================================================================
+    // 5. MUAT DATA LEGGER DARI SUPABASE
+    // =========================================================================
+    document.addEventListener('DOMContentLoaded', async () => {
+        applyTheme(localStorage.getItem('nilaiProTheme') || localStorage.getItem('theme') || 'dark');
+        updateSwitchUI();
+
+        const rawCtx = sessionStorage.getItem('nilaiProContext');
+        const rawGuru = sessionStorage.getItem('guruData');
+        if (!rawCtx && !rawGuru) {
+            alert('Sesi login tidak ditemukan. Mengalihkan ke login...');
+            window.location.href = 'login_4.html';
+            return;
+        }
+
+        leggerState.context = rawCtx ? JSON.parse(rawCtx) : JSON.parse(rawGuru);
+        const params = new URLSearchParams(window.location.search);
+        const rombelId = params.get('rombel_id');
+
+        if (!rombelId || !db) {
+            document.getElementById('leggerTbody').innerHTML =
+                `<tr><td class="text-center">Parameter kelas tidak ditemukan. Silakan kembali ke Dashboard Guru.</td></tr>`;
+            return;
+        }
+
+        await loadLeggerData(rombelId);
+    });
+
+    async function loadLeggerData(rombelId) {
+        try {
+            const ctx = leggerState.context;
+            const schoolId = ctx.school_id;
+            const semId = ctx.semester_id;
+
+            let cpQuery = db.from('cps').select('*').eq('school_id', schoolId);
+            if (semId) cpQuery = cpQuery.eq('semester_id', semId);
+
+            // Ambil info rombel, siswa, mapel, assignment, variabel global, grading config & cps secara paralel
+            const [
+                { data: rombelData },
+                { data: studentsData },
+                { data: mapelsData },
+                { data: assignData },
+                { data: varGlobalData },
+                { data: gradingCfgData },
+                { data: cpsData }
+            ] = await Promise.all([
+                db.from('rombels').select('*').eq('id', rombelId).single(),
+                db.from('students').select('*').eq('school_id', schoolId).eq('rombel_id', rombelId).order('no_absen', { ascending: true }),
+                db.from('mapels').select('*').eq('school_id', schoolId),
+                db.from('teaching_assignments').select('*').eq('school_id', schoolId).eq('rombel_id', rombelId),
+                db.from('variabel_global').select('*').eq('school_id', schoolId).limit(1),
+                db.from('grading_configs').select('*').eq('school_id', schoolId).limit(1),
+                cpQuery
+            ]);
+
+            leggerState.rombel = rombelData;
+            leggerState.students = (studentsData || []).sort((a, b) =>
+                (Number(a.no_absen) || 999) - (Number(b.no_absen) || 999) ||
+                String(a.full_name).localeCompare(String(b.full_name), 'id')
+            );
+            leggerState.varGlobal = varGlobalData && varGlobalData.length > 0 ? varGlobalData[0] : null;
+            leggerState.gradingConfig = gradingCfgData && gradingCfgData.length > 0 ? gradingCfgData[0] : null;
+            leggerState.cps = cpsData || [];
+
+            // Sinkronkan skala (0-100 / 0-10 / 0-4) dan jumlah digit koma
+            resolveGlobalScaleAndRounding();
+
+            const allMapels = mapelsData || [];
+            const tingkat = rombelData?.tingkat ?? '';
+
+            // Set Judul Legger
+            const tahunText = ctx.academic_year_name || '20../20..';
+            const semText = ctx.semester_name || '...';
+            document.getElementById('leggerTitle').textContent =
+                `Legger Nilai Kelas ${rombelData?.name || '-'} Tahun ${tahunText} Semester ${semText}`;
+            document.getElementById('leggerSubtitle').textContent =
+                `${ctx.school_name || ''} • Wali Kelas: ${ctx.guru_name || ctx.display_name || '-'}`;
+
+            // Filter assignment pada semester aktif
+            const classAssignments = (assignData || []).filter(a => !semId || !a.semester_id || a.semester_id === semId);
+            leggerState.assignmentByMapel = {};
+            classAssignments.forEach(a => {
+                // Prioritaskan assignment yang sudah difinalisasi jika ada duplikat
+                if (!leggerState.assignmentByMapel[a.mapel_id] || a.is_finalized === true) {
+                    leggerState.assignmentByMapel[a.mapel_id] = a;
+                }
+            });
+
+            // Kumpulkan mapel yang berlaku di kelas ini
+            const classMapelIds = new Set(classAssignments.map(a => a.mapel_id));
+            allMapels.forEach(m => {
+                if (Array.isArray(m.rombel_ids) && m.rombel_ids.includes(rombelId)) {
+                    classMapelIds.add(m.id);
+                }
+            });
+
+            // Simpan daftar mapel beserta Kode Mapel, KKM, Bobot & Batas Katrol (Min/Max) masing-masing
+            leggerState.mapels = allMapels
+                .filter(m => classMapelIds.has(m.id))
+                .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'id'))
+                .map(m => {
+                    const cfg = resolveMapelConfig(m, tingkat, leggerState.varGlobal, leggerState.scaleMax);
+                    return {
+                        ...m,
+                        displayCode: (m.code && String(m.code).trim() !== '') ? String(m.code).trim() : String(m.name || '-'),
+                        kkm: cfg.kkm,
+                        config: cfg
+                    };
+                });
+
+            // Daftar mapel yang sudah di-Finalisasi
+            leggerState.finalizedMapelIds = new Set(
+                classAssignments.filter(a => a.is_finalized === true).map(a => a.mapel_id)
+            );
+
+            // Ambil data nilai siswa hanya untuk mapel yang sudah Finalisasi
+            let grades = [];
+            if (leggerState.students.length > 0 && leggerState.finalizedMapelIds.size > 0) {
+                let gQ = db.from('grades')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .in('student_id', leggerState.students.map(s => s.id))
+                    .in('mapel_id', Array.from(leggerState.finalizedMapelIds));
+                if (semId) gQ = gQ.eq('semester_id', semId);
+                const { data: gData } = await gQ;
+                grades = gData || [];
+            }
+            leggerState.grades = grades;
+
+            // Hitung Nilai Asli & Nilai Jadi (dengan rumus katrol ketat per mapel) untuk setiap mapel finalisasi
+            leggerState.computedByMapel = {};
+            leggerState.mapels.forEach(mapel => {
+                if (!leggerState.finalizedMapelIds.has(mapel.id)) return;
+                leggerState.computedByMapel[mapel.id] = computeMapelScoresForClass(
+                    mapel,
+                    leggerState.students,
+                    leggerState.grades,
+                    leggerState.cps,
+                    leggerState.assignmentByMapel[mapel.id] || null,
+                    tingkat
+                );
+            });
+
+            // Render Statistik di Footer
+            document.getElementById('leggerStats').textContent =
+                `Total Siswa: ${leggerState.students.length} • Mapel Finalisasi: ${leggerState.finalizedMapelIds.size} / ${leggerState.mapels.length}`;
+
+            // Render tabel sesuai mode aktif (default: Nilai Jadi)
+            recalculateAndRender();
+        } catch (err) {
+            console.error('Gagal memuat data legger:', err);
+            document.getElementById('leggerTbody').innerHTML =
+                `<tr><td class="text-center">Gagal memuat legger: ${escapeHtml(err.message)}</td></tr>`;
+        }
+    }
+
+    // =========================================================================
+    // 6. PENYUSUNAN BARIS NILAI (ASLI / JADI), PERINGKAT & REKAP BAWAH
+    // =========================================================================
+    function recalculateAndRender() {
+        const { students, mapels, finalizedMapelIds, computedByMapel, scoreMode } = leggerState;
+
+        // 6A. Susun baris siswa berdasarkan hasil perhitungan Nilai Asli / Nilai Jadi per mapel
+        const calculatedRows = students.map((st, idx) => {
+            const scores = {};
+            let totalScore = 0;
+            let countedMapels = 0;
+
+            mapels.forEach(mapel => {
+                if (!finalizedMapelIds.has(mapel.id)) {
+                    scores[mapel.id] = null;
+                    return;
+                }
+
+                const calc = computedByMapel[mapel.id]?.[st.id];
+                if (!calc) {
+                    scores[mapel.id] = null;
+                    return;
+                }
+
+                const val = scoreMode === 'jadi' ? calc.nilaiJadi : calc.nilaiAsli;
+                if (val === null || val === undefined || Number.isNaN(val)) {
+                    scores[mapel.id] = null;
+                    return;
+                }
+
+                scores[mapel.id] = val;
+                totalScore += Number(val);
+                countedMapels += 1;
+            });
+
+            const avgScore = countedMapels > 0 ? totalScore / countedMapels : 0;
+            return {
+                no: idx + 1,
+                nis: st.nis || '-',
+                full_name: st.full_name,
+                scores,
+                totalScore: Number(totalScore.toFixed(2)),
+                avgScore: Number(avgScore.toFixed(2)),
+                countedMapels,
+                rank: '-'
+            };
+        });
+
+        // 6B. Hitung Peringkat berdasarkan Jumlah Nilai lalu Rata-rata
+        const sortedForRank = [...calculatedRows].sort((a, b) =>
+            b.totalScore - a.totalScore || b.avgScore - a.avgScore
+        );
+        sortedForRank.forEach((row, index) => {
+            if (row.countedMapels === 0) {
+                row.rank = '-';
+            } else if (
+                index > 0 &&
+                sortedForRank[index - 1].totalScore === row.totalScore &&
+                sortedForRank[index - 1].avgScore === row.avgScore
+            ) {
+                row.rank = sortedForRank[index - 1].rank;
+            } else {
+                row.rank = index + 1;
+            }
+        });
+
+        // 6C. Hitung Baris Rekap Bawah (Jumlah Nilai & Rata-rata per Mapel serta Keseluruhan)
+        const perMapelTotal = {};
+        const perMapelAvg = {};
+        mapels.forEach(mapel => {
+            const vals = calculatedRows
+                .map(r => r.scores[mapel.id])
+                .filter(v => v !== null && v !== undefined && !Number.isNaN(v));
+            if (vals.length > 0) {
+                const sum = vals.reduce((acc, v) => acc + v, 0);
+                perMapelTotal[mapel.id] = Number(sum.toFixed(2));
+                perMapelAvg[mapel.id] = Number((sum / vals.length).toFixed(2));
+            } else {
+                perMapelTotal[mapel.id] = null;
+                perMapelAvg[mapel.id] = null;
+            }
+        });
+
+        const validStudentTotals = calculatedRows.filter(r => r.countedMapels > 0).map(r => r.totalScore);
+        const validStudentAvgs = calculatedRows.filter(r => r.countedMapels > 0).map(r => r.avgScore);
+
+        const grandTotal = validStudentTotals.length > 0
+            ? Number(validStudentTotals.reduce((a, b) => a + b, 0).toFixed(2))
+            : null;
+        const avgOfTotals = validStudentTotals.length > 0
+            ? Number((grandTotal / validStudentTotals.length).toFixed(2))
+            : null;
+        const overallAvg = validStudentAvgs.length > 0
+            ? Number((validStudentAvgs.reduce((a, b) => a + b, 0) / validStudentAvgs.length).toFixed(2))
+            : null;
+
+        leggerState.rows = calculatedRows;
+        leggerState.summary = { perMapelTotal, perMapelAvg, grandTotal, avgOfTotals, overallAvg };
+
+        renderTable();
+    }
+
+    // =========================================================================
+    // 7. RENDER TABEL LEGGER (THEAD, TBODY, TFOOT)
+    // =========================================================================
+    function renderTable() {
+        const { mapels, finalizedMapelIds, rows, summary } = leggerState;
+
+        // 7A. Render Header Tabel (Kode Mapel + KKM jika sudah final)
+        const theadHtml = `
+            <tr>
+                <th class="col-no">No</th>
+                <th class="col-name">Nama Siswa</th>
+                ${mapels.map(m => {
+                    const isFin = finalizedMapelIds.has(m.id);
+                    const subText = isFin ? `KKM = ${m.kkm}` : 'Belum Final';
+                    const subClass = isFin ? 'kkm-text' : 'unfinal-text';
+                    const tooltipText = `${m.name} (${m.displayCode}) | KKM: ${m.kkm} | Katrol: ${m.config.nilai_min}–${m.config.nilai_max}`;
+                    return `
+                        <th class="col-mapel" title="${escapeHtml(tooltipText)}">
+                            <span class="mapel-code">${escapeHtml(m.displayCode)}</span>
+                            <span class="mapel-sub ${subClass}">${escapeHtml(subText)}</span>
+                        </th>
+                    `;
+                }).join('')}
+                <th class="col-total">Jumlah<br>Nilai</th>
+                <th class="col-avg">Rata-rata</th>
+                <th class="col-rank">Peringkat</th>
+            </tr>
+        `;
+        document.getElementById('leggerThead').innerHTML = theadHtml;
+
+        // 7B. Render Body Tabel
+        if (rows.length === 0) {
+            document.getElementById('leggerTbody').innerHTML =
+                `<tr><td colspan="${mapels.length + 5}" class="text-center">Belum ada data siswa di kelas ini.</td></tr>`;
+            document.getElementById('leggerTfoot').innerHTML = '';
+            document.getElementById('btnExportExcel').disabled = true;
+            return;
+        }
+
+        document.getElementById('leggerTbody').innerHTML = rows.map(r => {
+            const rankClass = r.rank === 1 ? 'rank-1' : r.rank === 2 ? 'rank-2' : r.rank === 3 ? 'rank-3' : '';
+
+            // Peringkat 1, 2, 3 hanya angka saja (tanpa ikon & tanpa kata Juara)
+            let rankDisplay = r.rank;
+            if (r.rank === 1) rankDisplay = `<span class="rank-badge rank-badge-1">1</span>`;
+            else if (r.rank === 2) rankDisplay = `<span class="rank-badge rank-badge-2">2</span>`;
+            else if (r.rank === 3) rankDisplay = `<span class="rank-badge rank-badge-3">3</span>`;
+
+            return `
+                <tr class="${rankClass}">
+                    <td class="col-no">${r.no}</td>
+                    <td class="col-name" title="${escapeHtml(r.full_name)}">${escapeHtml(r.full_name)}</td>
+                    ${mapels.map(m => {
+                        const val = r.scores[m.id];
+                        if (val === null || val === undefined) {
+                            return `<td class="col-mapel unfinalized-cell">-</td>`;
+                        }
+                        const displayVal = formatDisplayNumber(val);
+                        const isBelowKkm = Number(val) < Number(m.kkm);
+                        return `<td class="col-mapel ${isBelowKkm ? 'below-kkm' : ''}" title="${escapeHtml(m.displayCode)}: ${displayVal} (KKM ${m.kkm})">${displayVal}</td>`;
+                    }).join('')}
+                    <td class="col-total"><strong>${r.countedMapels > 0 ? r.totalScore : '-'}</strong></td>
+                    <td class="col-avg"><strong>${r.countedMapels > 0 ? r.avgScore : '-'}</strong></td>
+                    <td class="col-rank">${rankDisplay}</td>
+                </tr>
+            `;
+        }).join('');
+
+        // 7C. Render Baris Jumlah Nilai & Rata-rata di Bagian Paling Bawah Tabel
+        const tfootHtml = `
+            <tr>
+                <td colspan="2" class="tfoot-label">Jumlah Nilai</td>
+                ${mapels.map(m => {
+                    const tot = summary.perMapelTotal[m.id];
+                    return `<td class="col-mapel">${tot !== null && tot !== undefined ? tot : '-'}</td>`;
+                }).join('')}
+                <td class="col-total">${summary.grandTotal !== null ? summary.grandTotal : '-'}</td>
+                <td class="col-avg">-</td>
+                <td class="col-rank">-</td>
+            </tr>
+            <tr>
+                <td colspan="2" class="tfoot-label">Rata-rata Nilai</td>
+                ${mapels.map(m => {
+                    const avg = summary.perMapelAvg[m.id];
+                    return `<td class="col-mapel">${avg !== null && avg !== undefined ? avg : '-'}</td>`;
+                }).join('')}
+                <td class="col-total">${summary.avgOfTotals !== null ? summary.avgOfTotals : '-'}</td>
+                <td class="col-avg">${summary.overallAvg !== null ? summary.overallAvg : '-'}</td>
+                <td class="col-rank">-</td>
+            </tr>
+        `;
+        document.getElementById('leggerTfoot').innerHTML = tfootHtml;
+
+        document.getElementById('btnExportExcel').disabled = false;
+    }
+
+    // =========================================================================
+    // 8. EXPORT LEGGER KE EXCEL (.XLSX) SESUAI MODE NILAI AKTIF
+    // =========================================================================
+    function exportLeggerToXlsx() {
+        if (typeof XLSX === 'undefined') {
+            alert('Library Export Excel belum termuat. Periksa koneksi internet Anda.');
+            return;
+        }
+
+        const modeLabel = leggerState.scoreMode === 'jadi' ? 'Nilai Jadi' : 'Nilai Asli';
+        const titleText = `${document.getElementById('leggerTitle').textContent} (${modeLabel})`;
+        const headerRow = [
+            'No',
+            'Nama Siswa',
+            ...leggerState.mapels.map(m => {
+                const isFin = leggerState.finalizedMapelIds.has(m.id);
+                return isFin ? `${m.displayCode} (KKM=${m.kkm})` : `${m.displayCode} (Belum Final)`;
+            }),
+            'Jumlah Nilai',
+            'Rata-rata',
+            'Peringkat'
+        ];
+
+        const dataRows = leggerState.rows.map(r => [
+            r.no,
+            r.full_name,
+            ...leggerState.mapels.map(m => (r.scores[m.id] !== null && r.scores[m.id] !== undefined) ? r.scores[m.id] : ''),
+            r.countedMapels > 0 ? r.totalScore : '',
+            r.countedMapels > 0 ? r.avgScore : '',
+            r.rank
+        ]);
+
+        const { summary } = leggerState;
+        const jumlahRow = [
+            '',
+            'Jumlah Nilai',
+            ...leggerState.mapels.map(m => summary.perMapelTotal[m.id] ?? ''),
+            summary.grandTotal ?? '',
+            '',
+            ''
+        ];
+        const rataRow = [
+            '',
+            'Rata-rata Nilai',
+            ...leggerState.mapels.map(m => summary.perMapelAvg[m.id] ?? ''),
+            summary.avgOfTotals ?? '',
+            summary.overallAvg ?? '',
+            ''
+        ];
+
+        const aoa = [
+            [titleText],
+            [document.getElementById('leggerSubtitle').textContent],
+            [],
+            headerRow,
+            ...dataRows,
+            jumlahRow,
+            rataRow
+        ];
+
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Legger Nilai');
+
+        const safeKelas = (leggerState.rombel?.name || 'Kelas').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const safeMode = leggerState.scoreMode === 'jadi' ? 'Nilai_Jadi' : 'Nilai_Asli';
+        XLSX.writeFile(wb, `Legger_Nilai_${safeKelas}_${safeMode}.xlsx`);
+    }
+</script>
+</body>
+</html>

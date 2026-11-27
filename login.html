@@ -1,0 +1,3541 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Nilai Pro</title>
+    <!-- Library Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- File Konfigurasi URL & Anon Key -->
+    <script src="config.js"></script>
+    <!-- Library QR Code (Generate QR WhatsApp Pendaftaran Real-Time) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <style>
+        /* ==================== 1. VARIABEL TEMA & PALET WARNA ==================== */
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --secondary: #64748b;
+            --success: #16a34a;
+            --success-hover: #15803d;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --warning: #d97706;
+            
+            /* Palet Light Mode */
+            --bg-body: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 50%, #dbeafe 100%);
+            --bg-solid: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.96);
+            --border-color: #cbd5e1;
+            --text-dark: #0f172a;
+            --text-muted: #475569;
+            --row-selected: #e0f2fe;
+            --row-hover: #f1f5f9;
+            --row-even: rgba(248, 250, 252, 0.8);
+            --input-bg: #ffffff;
+            
+            /* Header Light Mode */
+            --header-bg: linear-gradient(135deg, #1e3a8a 0%, #3b0764 50%, #0f172a 100%);
+            --header-text: #ffffff;
+            
+            /* Judul Section Terang & Cerah */
+            --section-title-color: #1d4ed8;
+            
+            /* Shadow Tegas & Ringkas */
+            --card-shadow: 0 4px 12px rgba(15, 23, 42, 0.14), 0 1px 3px rgba(15, 23, 42, 0.08);
+            --modal-shadow: 0 10px 25px rgba(15, 23, 42, 0.35);
+            
+            --info-bg: #eff6ff;
+            --info-border: #bfdbfe;
+            --info-text: #1e40af;
+            --success-bg: #f0fdf4;
+            --success-border: #bbf7d0;
+            --success-text: #166534;
+            --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23475569'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+        }
+
+        /* Palet Dark Mode (Default) */
+        [data-theme="dark"] {
+            --bg-body: linear-gradient(135deg, #090d16 0%, #17153b 50%, #0f172a 100%);
+            --bg-solid: #1e293b;
+            --card-bg: rgba(30, 41, 59, 0.94);
+            --border-color: #334155;
+            --text-dark: #f8fafc;
+            --text-muted: #94a3b8;
+            --row-selected: #1e3a8a;
+            --row-hover: rgba(51, 65, 85, 0.65);
+            --row-even: rgba(15, 23, 42, 0.45);
+            --input-bg: #0f172a;
+            
+            /* Header Dark Mode */
+            --header-bg: linear-gradient(135deg, #020617 0%, #1e1b4b 50%, #0f172a 100%);
+            --header-text: #ffffff;
+            
+            /* Judul Section Terang & Cerah di Dark Mode */
+            --section-title-color: #38bdf8;
+            
+            /* Shadow Tegas & Ringkas Dark Mode */
+            --card-shadow: 0 6px 16px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.4);
+            --modal-shadow: 0 12px 30px rgba(0, 0, 0, 0.75);
+            
+            --info-bg: rgba(30, 58, 138, 0.35);
+            --info-border: #1d4ed8;
+            --info-text: #93c5fd;
+            --success-bg: rgba(20, 83, 45, 0.35);
+            --success-border: #15803d;
+            --success-text: #86efac;
+            --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+        }
+
+        /* ==================== 2. RESET & LAYOUT GLOBAL ==================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background: var(--bg-body);
+            background-attachment: fixed;
+            color: var(--text-dark);
+            min-height: 100vh;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+        }
+        
+        /* Mode Dashboard (Non-Login) */
+        body.dashboard-mode {
+            display: block; 
+            padding: 14px 20px 75px 20px;
+        }
+
+        /* Responsif Panel Login */
+        .container {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        body:not(.dashboard-mode) .container {
+            width: 550px;
+            max-width: 95vw;
+        }
+
+        body.dashboard-mode .container {
+            width: 100%;
+            max-width: 100%;
+        }
+
+        /* ==================== 3. CARD, SHADOW & TRANSISI RINGAN ==================== */
+        .card {
+            background: var(--card-bg);
+            border-radius: 14px; 
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+            padding: 20px 24px; 
+            margin-bottom: 16px;
+            width: 100%;
+        }
+        
+        /* Perbesar ukuran font di dalam panel login agar seperti di-zoom 130% */
+        #loginSection { 
+            margin-bottom: 0; 
+            padding: 40px;
+            font-size: 1.15rem; /* Zoom effect */
+        }
+        #loginSection .logo-container h2 { font-size: 2rem; }
+        #loginSection input, #loginSection select, #loginSection button {
+            font-size: 1.1rem;
+            height: 48px;
+            border-radius: 12px;
+        }
+        #loginSection label {
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+        }
+        #loginSection .tab-btn {
+            font-size: 1.1rem;
+            padding: 12px;
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            #loginSection { padding: 24px 20px; font-size: 1rem; }
+            #loginSection input, #loginSection select, #loginSection button { height: 42px; font-size: 1rem; }
+            body.dashboard-mode { padding: 10px 10px 75px 10px; }
+            .card { padding: 14px 16px; }
+        }
+
+        /* ==================== 4. STICKY / LOCKED HEADER DASHBOARD ==================== */
+        .dashboard-header { 
+            position: sticky;
+            top: 10px;
+            z-index: 900;
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 16px; 
+            background: var(--header-bg); 
+            color: var(--header-text); 
+            padding: 14px 22px;
+            border-radius: 12px; 
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+        }
+        .dashboard-header h2 { font-weight: 800; font-size: 1.35rem; letter-spacing: -0.4px; margin: 0; color: #ffffff; }
+        .dashboard-header p { color: #cbd5e1; font-size: 0.85rem; margin-top: 2px; }
+
+        .section-heading-bright {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--section-title-color);
+            letter-spacing: -0.3px;
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        /* ==================== 5. LOGO & TABS LOGIN ==================== */
+        .app-logo {
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.15s ease;
+            margin-bottom: 12px;
+        }
+        .app-logo img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+        }
+        .app-logo:active { transform: scale(0.92); }
+        .logo-container { text-align: center; margin-bottom: 20px; }
+        .logo-container h2 { font-weight: 800; color: var(--text-dark); letter-spacing: -0.5px; }
+
+        .tabs-header {
+            display: flex; background: var(--input-bg); padding: 5px; border-radius: 10px; margin-bottom: 20px; gap: 6px; border: 1px solid var(--border-color);
+        }
+        .tab-btn {
+            flex: 1; border: none; background: transparent; color: var(--text-muted);
+            font-weight: 700; border-radius: 8px; cursor: pointer; transition: background-color 0.15s ease, color 0.15s ease;
+            white-space: nowrap;
+        }
+        .tab-btn.active { background: var(--primary); color: #ffffff; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35); }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fastFade 0.18s ease-out; }
+        @keyframes fastFade { from { opacity: 0; } to { opacity: 1; } }
+        
+        .step-section.hidden { display: none !important; }
+
+        /* ==================== 6. FORMS, INPUTS & VALIDASI ==================== */
+        .form-group { margin-bottom: 14px; position: relative; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.82rem; color: var(--text-muted); white-space: nowrap; }
+        
+        input, select {
+            width: 100%; padding: 8px 12px; border: 1.5px solid var(--border-color); border-radius: 9px;
+            font-size: 0.95rem; outline: none; transition: border-color 0.15s ease; background-color: var(--input-bg); color: var(--text-dark); height: 40px;
+        }
+        input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25); }
+        input:read-only { opacity: 0.85; cursor: default; }
+        input.input-error { border-color: var(--danger) !important; box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25) !important; }
+
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: var(--select-arrow);
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 16px;
+            padding-right: 32px;
+            cursor: pointer;
+        }
+
+        input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border-color);
+            border-radius: 5px;
+            background-color: var(--input-bg);
+            cursor: pointer;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        input[type="checkbox"]:checked {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+        input[type="checkbox"]:checked::after {
+            content: '✔';
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .num-wrapper {
+            display: flex;
+            align-items: center;
+            background-color: var(--input-bg);
+            border: 1.5px solid var(--border-color);
+            border-radius: 9px;
+            height: 40px;
+            overflow: hidden;
+        }
+        .num-wrapper:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+        }
+        .num-wrapper input {
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            height: 100%;
+            padding: 0 4px;
+            width: 100%;
+            background: transparent;
+        }
+        .num-btn {
+            width: 28px !important;
+            min-width: 28px;
+            height: 100% !important;
+            background: rgba(100, 116, 139, 0.15) !important;
+            color: var(--text-dark) !important;
+            border: none !important;
+            border-radius: 0 !important;
+            font-size: 1.05rem;
+            font-weight: bold;
+            padding: 0 !important;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: none !important;
+        }
+        .num-btn:hover:not(:disabled) {
+            background: var(--primary) !important;
+            color: #ffffff !important;
+        }
+        .num-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .inline-form {
+            display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+            background: rgba(15, 23, 42, 0.25); padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border-color);
+            height: 100%;
+        }
+        [data-theme="light"] .inline-form { background: rgba(241, 245, 249, 0.8); }
+        .inline-form .form-group { margin-bottom: 0; }
+
+        .dev-form-grid {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 14px;
+            align-items: stretch;
+        }
+        @media (max-width: 900px) {
+            .dev-form-grid { grid-template-columns: 1fr; }
+        }
+
+        .rekap-box {
+            background: rgba(15, 23, 42, 0.25);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            height: 100%;
+        }
+        [data-theme="light"] .rekap-box { background: rgba(241, 245, 249, 0.8); }
+        .rekap-row {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 6px;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 4px;
+        }
+        .rekap-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .rekap-val { color: var(--primary); font-weight: 700; }
+        [data-theme="dark"] .rekap-val { color: #60a5fa; }
+
+        /* ==================== 7. BUTTONS ==================== */
+        button {
+            width: 100%; padding: 0 16px; background-color: var(--primary); color: white; border: none;
+            border-radius: 9px; font-size: 0.92rem; font-weight: 600; cursor: pointer; transition: background-color 0.15s ease;
+            height: 40px; display: inline-flex; justify-content: center; align-items: center; gap: 6px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.18);
+        }
+        button:hover:not(:disabled) { background-color: var(--primary-hover); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+        
+        .btn-success { background-color: var(--success); }
+        .btn-success:hover:not(:disabled) { background-color: var(--success-hover); }
+        .btn-danger { background-color: var(--danger); width: auto; }
+        .btn-danger:hover:not(:disabled) { background-color: var(--danger-hover); }
+        .btn-secondary { background-color: var(--secondary); width: auto; color: white; }
+        .btn-secondary:hover:not(:disabled) { background-color: #475569; }
+        .btn-outline { background-color: var(--input-bg); color: var(--text-dark); border: 1.5px solid var(--border-color); width: auto; box-shadow: none; }
+        .btn-outline:hover:not(:disabled) { background-color: var(--row-hover); border-color: var(--primary); }
+        .btn-periode { background-color: rgba(37, 99, 235, 0.14); color: var(--primary); border: 1.5px solid rgba(37, 99, 235, 0.45); width: auto; box-shadow: none; }
+        [data-theme="dark"] .btn-periode { color: #60a5fa; border-color: rgba(96, 165, 250, 0.45); background-color: rgba(37, 99, 235, 0.22); }
+        .btn-periode:hover:not(:disabled) { background-color: var(--primary); color: #ffffff; border-color: var(--primary); }
+        
+        #btnCekAdmin { width: auto; min-width: 115px; padding: 0 14px; }
+        .btn-sm { padding: 0 11px; font-size: 0.84rem; height: 35px; }
+        .btn-icon { padding: 0; width: 35px; justify-content: center; }
+
+        /* ==================== 8. ACTION BAR & PAGINATION ==================== */
+        .action-bar {
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+            background: rgba(15, 23, 42, 0.25); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 12px;
+        }
+        [data-theme="light"] .action-bar { background: rgba(241, 245, 249, 0.8); }
+        .action-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .pagination-container {
+            display: flex; justify-content: space-between; align-items: center; margin-top: 12px; font-size: 0.92rem;
+        }
+        .pagination-controls { display: flex; gap: 8px; align-items: center; }
+
+        /* ==================== 9. THEME TOGGLE & TOAST NOTIFICATION ==================== */
+        .theme-toggle-btn {
+            position: fixed; bottom: 16px; left: 16px; width: auto; border-radius: 10px; 
+            padding: 10px 18px; height: 44px; z-index: 1000; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            background: var(--header-bg); color: #ffffff; border: 1.5px solid rgba(255,255,255,0.22);
+            font-size: 0.92rem; font-weight: 700;
+        }
+        .theme-toggle-btn:hover { filter: brightness(1.12); }
+
+        .toast-notif {
+            position: fixed; top: 18px; right: 18px; background: var(--danger); color: white;
+            padding: 11px 18px; border-radius: 9px; font-weight: 600; font-size: 0.9rem;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4); z-index: 2000;
+            display: flex; align-items: center; gap: 8px;
+            opacity: 0; pointer-events: none; transform: translateY(-10px);
+            transition: opacity 0.18s ease, transform 0.18s ease;
+        }
+        .toast-notif.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+        /* ==================== 10. MODALS ==================== */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(9, 13, 22, 0.78);
+            display: flex; align-items: center; justify-content: center; z-index: 1100; padding: 16px;
+            opacity: 0; pointer-events: none; transition: opacity 0.18s ease;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-card {
+            background: var(--card-bg); border: 1px solid var(--border-color); padding: 24px; border-radius: 14px; width: 100%; max-width: 440px;
+            box-shadow: var(--modal-shadow); position: relative;
+        }
+        .modal-card.modal-lg {
+            max-width: 620px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        /* Pastikan Modal Konfirmasi selalu tampil di atas Modal Kelola Periode & scrollable di layar kecil */
+        #confirmModal {
+            z-index: 1300;
+        }
+        #confirmModal .modal-card {
+            max-width: 490px;
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+        .modal-close {
+            position: absolute; top: 14px; right: 14px; background: transparent; border: none; font-size: 1.4rem;
+            color: var(--text-muted); cursor: pointer; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; padding: 0; box-shadow: none;
+        }
+        .modal-close:hover { background: var(--row-hover); color: var(--text-dark); }
+
+        /* ==================== 11. BADGES, TABLES & KELOLA PERIODE ==================== */
+        .badge { display: inline-block; padding: 3px 9px; border-radius: 16px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+        .badge-free { background-color: #e2e8f0; color: #334155; }
+        .badge-premium { background-color: #dbeafe; color: #1e40af; }
+        .badge-active { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .badge-archive { background-color: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+        [data-theme="dark"] .badge-free { background-color: #334155; color: #e2e8f0; }
+        [data-theme="dark"] .badge-premium { background-color: #1e3a8a; color: #93c5fd; }
+        [data-theme="dark"] .badge-active { background-color: rgba(22, 163, 74, 0.25); color: #86efac; border: 1px solid #15803d; }
+        [data-theme="dark"] .badge-archive { background-color: rgba(100, 116, 139, 0.2); color: #94a3b8; border: 1px solid #475569; }
+        
+        .badge-code { font-family: 'Courier New', Courier, monospace; letter-spacing: 1.5px; font-weight: 700; color: var(--primary); }
+        [data-theme="dark"] .badge-code { color: #60a5fa; }
+        .badge-token { font-family: 'Courier New', Courier, monospace; letter-spacing: 2px; font-weight: 700; color: var(--warning); background: rgba(217, 119, 6, 0.15); padding: 3px 7px; border-radius: 6px; border: 1px solid rgba(217, 119, 6, 0.3); }
+        [data-theme="dark"] .badge-token { color: #fbbf24; }
+        .badge-periode-table {
+            display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 0.78rem; font-weight: 700;
+            background: var(--success-bg); color: var(--success-text); border: 1px solid var(--success-border);
+        }
+
+        /* Kartu Tahun Ajaran & Semester di Modal Kelola Periode */
+        .periode-list-scroll {
+            overflow-y: auto;
+            padding-right: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 52vh;
+        }
+        .year-card {
+            background: var(--input-bg);
+            border: 1.5px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px 14px;
+            transition: border-color 0.15s ease;
+        }
+        .year-card.is-active-year {
+            border-color: var(--success);
+            box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.25);
+        }
+        .year-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed var(--border-color);
+        }
+        .semester-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        @media (max-width: 480px) {
+            .semester-grid { grid-template-columns: 1fr; }
+        }
+        .semester-pill {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+        }
+        .semester-pill.is-active-sem {
+            background: var(--success-bg);
+            border-color: var(--success);
+        }
+        /* Grup tombol aksi di header kartu Tahun Ajaran (Aktifkan Tahun + Hapus) */
+        .year-card-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        /* Kotak Peringatan Besar saat Hapus Tahun Ajaran yang Sudah Berisi Data */
+        .danger-alert-box {
+            background: rgba(220, 38, 38, 0.14);
+            border: 2px solid var(--danger);
+            border-radius: 11px;
+            padding: 14px;
+            margin: 12px 0;
+            text-align: left;
+            color: var(--text-dark);
+        }
+        [data-theme="dark"] .danger-alert-box {
+            background: rgba(220, 38, 38, 0.22);
+        }
+        .danger-alert-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--danger);
+            font-size: 1rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        [data-theme="dark"] .danger-alert-title {
+            color: #f87171;
+        }
+        .safe-info-box {
+            background: var(--info-bg);
+            border: 1.5px solid var(--info-border);
+            border-radius: 10px;
+            padding: 11px 13px;
+            margin: 12px 0;
+            text-align: left;
+            color: var(--info-text);
+            font-size: 0.86rem;
+            line-height: 1.45;
+        }
+        /* Grid Statistik Rincian Data Tahun Ajaran (Rombel, Mapel, Guru, Siswa) */
+        .periode-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin: 10px 0 4px 0;
+            text-align: left;
+        }
+        @media (max-width: 420px) {
+            .periode-stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .periode-stat-item {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.86rem;
+        }
+        .periode-stat-item.has-data {
+            border-color: rgba(220, 38, 38, 0.65);
+        }
+        .periode-stat-label {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .periode-stat-value {
+            font-weight: 800;
+            font-size: 0.96rem;
+            color: var(--text-dark);
+        }
+        .periode-stat-item.has-data .periode-stat-value {
+            color: var(--danger);
+        }
+        [data-theme="dark"] .periode-stat-item.has-data .periode-stat-value {
+            color: #f87171;
+        }
+
+        .table-responsive { overflow-x: auto; border: 1px solid var(--border-color); border-radius: 9px; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.92rem; background: transparent; color: var(--text-dark); }
+        th, td { padding: 8px 11px; text-align: left; border-bottom: 1px solid var(--border-color); vertical-align: middle; white-space: nowrap; }
+        th {
+            background-color: rgba(15, 23, 42, 0.45); color: var(--text-dark); font-weight: 700; text-transform: uppercase; 
+            font-size: 0.78rem; letter-spacing: 0.04em; cursor: pointer; user-select: none;
+        }
+        [data-theme="light"] th { background-color: rgba(241, 245, 249, 0.95); }
+        th:hover { background-color: var(--row-hover); }
+        tr:nth-child(even) { background-color: var(--row-even); }
+        tr:hover { background-color: var(--row-hover); }
+        tr.selected-row { background-color: var(--row-selected); }
+
+        .sort-icon { display: inline-block; margin-left: 4px; color: var(--text-muted); font-size: 0.7rem; }
+        
+        .hidden { display: none !important; }
+        .message { margin-top: 8px; text-align: center; font-weight: 600; font-size: 0.88rem; transition: opacity 0.3s; }
+        .message:empty { display: none; margin-top: 0; }
+        
+        .info-box {
+            background: var(--info-bg); border: 1px solid var(--info-border); border-radius: 9px; padding: 12px;
+            margin-bottom: 14px; color: var(--info-text); font-size: 0.9rem; line-height: 1.45;
+        }
+        .info-box-success {
+            background: var(--success-bg); border: 1px solid var(--success-border); color: var(--success-text);
+        }
+
+        .delete-list { max-height: 170px; overflow-y: auto; background: var(--input-bg); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); text-align: left; margin: 10px 0; font-size: 0.88rem; }
+
+        /* ==================== 12. TOMBOL & POPUP REGISTER POJOK KANAN BAWAH ==================== */
+        /* Tombol Register Pojok Kanan Bawah (Sebaris & Setema dengan Tombol Ganti Tema) */
+        .register-toggle-btn {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            width: auto;
+            border-radius: 10px;
+            padding: 10px 18px;
+            height: 44px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            background: var(--header-bg);
+            color: #ffffff;
+            border: 1.5px solid rgba(255, 255, 255, 0.22);
+            font-size: 0.92rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: filter 0.15s ease, transform 0.15s ease;
+        }
+        .register-toggle-btn:hover {
+            filter: brightness(1.14);
+        }
+        .register-toggle-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* Otomatis Sembunyikan Tombol & Popup Register saat Masuk Dashboard Developer */
+        body.dashboard-mode .register-toggle-btn,
+        body.dashboard-mode .register-popup-card {
+            display: none !important;
+        }
+
+        /* Kartu Popup Form Pendaftaran Menempel di Pojok Kanan Bawah */
+        .register-popup-card {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            width: 396px;
+            max-width: calc(100vw - 32px);
+            max-height: calc(100vh - 32px);
+            overflow-y: auto;
+            background: var(--card-bg);
+            border: 1.5px solid var(--border-color);
+            border-radius: 14px;
+            box-shadow: var(--modal-shadow);
+            z-index: 1050;
+            color: var(--text-dark);
+            animation: regPopupFadeIn 0.18s ease-out;
+        }
+        @keyframes regPopupFadeIn {
+            from { opacity: 0; transform: translateY(12px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* Header Sticky Popup Register */
+        .register-popup-header {
+            background: var(--header-bg);
+            color: #ffffff;
+            padding: 13px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+            position: sticky;
+            top: 0;
+            z-index: 3;
+        }
+        .register-popup-header h3 {
+            font-size: 0.96rem;
+            font-weight: 800;
+            margin: 0;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: -0.2px;
+        }
+        .register-close-btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            border: none;
+            width: 28px;
+            min-width: 28px;
+            height: 28px;
+            padding: 0;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            line-height: 1;
+            box-shadow: none;
+        }
+        .register-close-btn:hover {
+            background: var(--danger);
+        }
+
+        /* Isi Form Pendaftaran */
+        .register-popup-body {
+            padding: 14px 16px 16px 16px;
+        }
+        .register-popup-body .form-group {
+            margin-bottom: 11px;
+        }
+        .register-popup-body label {
+            font-size: 0.8rem;
+            margin-bottom: 4px;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+        .register-popup-body input,
+        .register-popup-body select {
+            height: 39px;
+            font-size: 0.92rem;
+            border-radius: 9px;
+        }
+        .register-popup-body select.input-error {
+            border-color: var(--danger) !important;
+            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25) !important;
+        }
+        .register-popup-body .num-wrapper.input-error {
+            border-color: var(--danger) !important;
+            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25) !important;
+        }
+
+        /* Petunjuk & Status Validasi Field Register */
+        .reg-hint {
+            font-size: 0.74rem;
+            color: var(--text-muted);
+            margin-top: 3px;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .reg-hint.error-text {
+            color: var(--danger);
+            font-weight: 700;
+        }
+
+        /* Area QR Code WhatsApp Besar, Jelas, dan Mudah Di-Scan */
+        .register-qr-section {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px dashed var(--border-color);
+            text-align: center;
+        }
+        .register-qr-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 6px;
+        }
+        .register-qr-box {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            padding: 14px;
+            border-radius: 12px;
+            border: 2px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+            margin: 4px auto 6px auto;
+            min-width: 228px;
+            min-height: 228px;
+        }
+        .register-qr-box img,
+        .register-qr-box canvas {
+            width: 210px !important;
+            height: 210px !important;
+            image-rendering: pixelated;
+        }
+        .register-qr-box canvas + img {
+            display: block !important;
+        }
+        .register-qr-caption {
+            font-size: 0.74rem;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
+
+        /* Responsif Layar HP / Layar Kecil */
+        @media (max-width: 600px) {
+            body:not(.dashboard-mode) {
+                padding-bottom: 76px; /* Memberi ruang aman agar panel login tidak bertumpuk dengan tombol bawah */
+            }
+            .theme-toggle-btn {
+                bottom: 12px;
+                left: 12px;
+                padding: 8px 13px;
+                height: 42px;
+                font-size: 0.85rem;
+            }
+            .register-toggle-btn {
+                bottom: 12px;
+                right: 12px;
+                padding: 8px 14px;
+                height: 42px;
+                font-size: 0.85rem;
+            }
+            .register-popup-card {
+                width: calc(100vw - 24px);
+                max-width: calc(100vw - 24px);
+                right: 12px;
+                bottom: 12px;
+                max-height: calc(100vh - 24px);
+            }
+            .register-qr-box {
+                padding: 12px;
+                min-width: 204px;
+                min-height: 204px;
+            }
+            .register-qr-box img,
+            .register-qr-box canvas {
+                width: 190px !important;
+                height: 190px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+    <!-- ==================== NOTIFIKASI TOAST VALIDASI ==================== -->
+    <div id="toastNotif" class="toast-notif">
+        <span>⚠️</span>
+        <span id="toastMsg">Peringatan Validasi!</span>
+    </div>
+
+    <!-- ==================== TOMBOL TEMA GLOBAL ==================== -->
+    <button class="theme-toggle-btn" onclick="toggleTheme()" id="btnThemeToggle">☀️ Mode Terang</button>
+
+    <!-- ==================== TOMBOL REGISTER & POPUP PENDAFTARAN (POJOK KANAN BAWAH) ==================== -->
+    <button type="button" class="register-toggle-btn" id="btnRegisterToggle" onclick="openRegisterPopup(event)" title="Pendaftaran Aplikasi Nilai Pro">
+        <!-- Ikon Register SVG (User Plus) -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <line x1="19" y1="8" x2="19" y2="14"></line>
+            <line x1="22" y1="11" x2="16" y2="11"></line>
+        </svg>
+        <span>Register</span>
+    </button>
+
+    <!-- Popup Form Pendaftaran Menempel Pojok Kanan Bawah -->
+    <div id="registerPopupCard" class="register-popup-card hidden" role="dialog" aria-labelledby="registerPopupTitle">
+        <!-- Header Popup Register -->
+        <div class="register-popup-header">
+            <h3 id="registerPopupTitle">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                <span>Pendaftaran Aplikasi Nilai Pro</span>
+            </h3>
+            <button type="button" class="register-close-btn" onclick="closeRegisterPopup()" title="Tutup Form">&times;</button>
+        </div>
+
+        <!-- Body Form & QR Code Otomatis -->
+        <div class="register-popup-body">
+            <!-- Field 1: Nama Sekolah (Otomatis Kapital, Min 5 Karakter) -->
+            <div class="form-group">
+                <label for="regSchoolName">Nama Sekolah <span style="color: var(--danger);">*</span></label>
+                <input type="text" id="regSchoolName" placeholder="CONTOH: SMPN 1 NUSANTARA" style="text-transform: uppercase; font-weight: 600;" oninput="handleRegUppercaseInput(this, 5, 'regSchoolHint')" autocomplete="off">
+                <div id="regSchoolHint" class="reg-hint">
+                    <span>Otomatis huruf kapital</span>
+                    <span>Min. 5 karakter</span>
+                </div>
+            </div>
+
+            <!-- Field 2: Tingkat (Dropdown SD/MI, SMP/MTs, SMA/SMK/MA) -->
+            <div class="form-group">
+                <label for="regSchoolLevel">Tingkat <span style="color: var(--danger);">*</span></label>
+                <select id="regSchoolLevel" onchange="handleRegLevelChange(this)">
+                    <option value="">-- Pilih Tingkat --</option>
+                    <option value="SD/MI">SD/MI</option>
+                    <option value="SMP/MTs">SMP/MTs</option>
+                    <option value="SMA/SMK/MA">SMA/SMK/MA</option>
+                </select>
+            </div>
+
+            <!-- Field 3: Jumlah Rombel (Angka Bulat Min 1 Max 100) -->
+            <div class="form-group">
+                <label for="regRombelCount">Jumlah Rombel <span style="color: var(--danger);">*</span></label>
+                <div class="num-wrapper" id="regRombelWrapper" style="height: 39px;">
+                    <button type="button" class="num-btn" onclick="adjustRegRombel(-1)" aria-label="Kurangi Rombel">−</button>
+                    <input type="text" id="regRombelCount" inputmode="numeric" maxlength="3" placeholder="1 - 100" oninput="handleRegRombelInput(this)" style="text-align: center; font-weight: 700;" autocomplete="off">
+                    <button type="button" class="num-btn" onclick="adjustRegRombel(1)" aria-label="Tambah Rombel">+</button>
+                </div>
+                <div id="regRombelHint" class="reg-hint">
+                    <span>Angka bulat min. 1 maks. 100</span>
+                </div>
+            </div>
+
+            <!-- Field 4: Nama Pemesan (Otomatis Kapital, Min 3 Karakter) -->
+            <div class="form-group">
+                <label for="regOrdererName">Nama Pemesan <span style="color: var(--danger);">*</span></label>
+                <input type="text" id="regOrdererName" placeholder="CONTOH: BUDI SANTOSO" style="text-transform: uppercase; font-weight: 600;" oninput="handleRegUppercaseInput(this, 3, 'regOrdererHint')" autocomplete="off" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); submitRegisterWhatsApp(); }">
+                <div id="regOrdererHint" class="reg-hint">
+                    <span>Otomatis huruf kapital</span>
+                    <span>Min. 3 karakter</span>
+                </div>
+            </div>
+
+            <!-- Tombol Kirim ke WhatsApp -->
+            <button type="button" class="btn-success" id="btnSubmitRegister" onclick="submitRegisterWhatsApp()" style="height: 42px; font-size: 0.95rem; margin-top: 4px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <span>Kirim</span>
+            </button>
+
+            <!-- Bagian QR Code WhatsApp Dinamis Real-Time -->
+            <div class="register-qr-section">
+                <div class="register-qr-title">📱 Scan QR untuk Register</div>
+                <div class="register-qr-box" id="regQrContainer" title="Scan QR untuk Register via WhatsApp"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- ==================== LANDING PAGE / PANEL LOGIN ==================== -->
+        <div id="loginSection" class="card">
+            <div class="logo-container">
+               <div class="app-logo" id="appIcon" onclick="handleDevTrigger()" title="Nilai Pro">
+                    <!-- Logo SVG Inline: Buku, Pena, dan Bar Chart Nilai -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="120" height="120">
+                        <!-- Background Lingkaran -->
+                        <circle cx="50" cy="50" r="48" fill="#2563eb" />
+                        
+                        <!-- Grafik Bar (Melambangkan Olah Nilai / Akademik) -->
+                        <rect x="30" y="45" width="10" height="20" rx="2" fill="#93c5fd" />
+                        <rect x="45" y="30" width="10" height="35" rx="2" fill="#bfdbfe" />
+                        <rect x="60" y="15" width="10" height="50" rx="2" fill="#ffffff" />
+                        
+                        <!-- Buku Terbuka -->
+                        <path d="M20 75 Q 35 65 50 75 Q 65 65 80 75 L 80 85 Q 65 75 50 85 Q 35 75 20 85 Z" fill="#ffffff" />
+                        <path d="M50 72 L 50 85" stroke="#1d4ed8" stroke-width="3" stroke-linecap="round" />
+                        
+                        <!-- Pena / Pensil Menulis -->
+                        <path d="M72 30 L 78 36 L 58 56 L 52 50 Z" fill="#fbbf24" />
+                        <path d="M52 50 L 58 56 L 48 60 Z" fill="#d97706" />
+                    </svg>
+                </div>
+                <h2>Sistem Nilai Pro</h2>
+            </div>
+            
+            <div class="tabs-header">
+                <button class="tab-btn active" onclick="switchTab('tabGuru')">Login Guru</button>
+                <button class="tab-btn" onclick="switchTab('tabAdmin')">Login Admin</button>
+            </div>
+
+            <!-- TAB 1: LOGIN GURU -->
+            <div id="tabGuru" class="tab-content active">
+                <div id="guruStep1" class="step-section">
+                    <div class="form-group">
+                        <label>Kode Akses Sekolah (6 Karakter):</label>
+                        <input type="text" id="guruSchoolCode" maxlength="6" style="text-transform: uppercase; letter-spacing: 2px; text-align: center; font-weight: bold;" placeholder="NILPRO" oninput="this.value = this.value.toUpperCase()" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); verifikasiKodeGuru(); }">
+                    </div>
+                    <button id="btnVerifikasiGuru" onclick="verifikasiKodeGuru()">Verifikasi Kode</button>
+                </div>
+                
+                <div id="guruStep2" class="step-section hidden">
+                    <div class="info-box info-box-success" id="verifiedSchoolInfoGuru"></div>
+                    <div class="form-group">
+                        <label>Cari & Pilih Guru (Masukkan Kode Guru):</label>
+                        <input type="text" id="searchGuruCode" maxlength="4" style="text-transform: uppercase; letter-spacing: 2px; text-align: center; font-weight: bold; font-size: 1.1rem;" placeholder="KODE (Min. 3 Huruf)" oninput="cariGuru(this.value)">
+                    </div>
+                    
+                    <!-- Wadah untuk memunculkan daftar hasil pencarian guru secara realtime -->
+                    <div id="teacherSearchResults" style="background:var(--input-bg); border:1px solid var(--border-color); border-radius:8px; max-height:250px; overflow-y:auto; margin-top:4px; display:none;">
+                    </div>
+                    
+                    <button id="btnMasukGuru" class="btn-success hidden" style="margin-top: 15px;" onclick="eksekusiMasukGuru()">Masuk Dashboard Guru ➔</button>
+                </div>
+                <div id="guruStatus" class="message"></div>
+            </div>
+
+            <!-- TAB 2: LOGIN ADMIN SEKOLAH -->
+            <div id="tabAdmin" class="tab-content">
+                <div id="adminStep1" class="step-section">
+                    <div class="form-group">
+                        <label>Kode Akses Sekolah (Admin):</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="adminSchoolCode" maxlength="6" style="text-transform: uppercase; letter-spacing: 2px; text-align: center; font-weight: bold;" placeholder="NILPRO" oninput="this.value = this.value.toUpperCase()" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); cekKodeAdmin(); }">
+                            <button id="btnCekAdmin" class="btn-primary" onclick="cekKodeAdmin()">Cek Kode</button>
+                        </div>
+                    </div>
+                    <div id="adminSchoolFoundInfo" class="info-box hidden"></div>
+                </div>
+                
+                <div id="adminStep2" class="step-section hidden">
+                    <button id="btnMasukAdmin" class="btn-success" onclick="openAdminTokenModal()">Masuk Dashboard Admin ➔</button>
+                </div>
+                <div id="adminStatus" class="message"></div>
+            </div>
+        </div>
+
+        <!-- ==================== MODALS (DEV, KONFIRMASI, TOKEN ADMIN, KELOLA PERIODE) ==================== -->
+        <!-- Modal Login Developer -->
+        <div id="devModal" class="modal-overlay" onclick="handleOverlayClick(event, 'devModal')">
+            <div class="modal-card">
+                <button class="modal-close" onclick="closeDevModal()">&times;</button>
+                <div style="text-align: center; margin-bottom: 18px;">
+                    <span style="font-size: 2.3rem;">🛠️</span>
+                    <h3 style="margin-top: 6px; color: var(--text-dark);">Developer Portal</h3>
+                </div>
+                <div class="form-group">
+                    <label>Email Developer:</label>
+                    <input type="email" id="devEmail" placeholder="masukkan akun dev" onkeydown="if(event.key === 'Enter') document.getElementById('devPassword').focus()">
+                </div>
+                <div class="form-group">
+                    <label>Password Developer:</label>
+                    <input type="password" id="devPassword" placeholder="Masukkan password" onkeydown="if(event.key === 'Enter') prosesLoginDev()">
+                </div>
+                <button onclick="prosesLoginDev()" style="margin-top: 14px;">Masuk Dev</button>
+                <div id="devStatus" class="message"></div>
+            </div>
+        </div>
+
+        <!-- Modal Konfirmasi Umum / Hapus -->
+        <div id="confirmModal" class="modal-overlay" onclick="handleOverlayClick(event, 'confirmModal')">
+            <div class="modal-card">
+                <div style="text-align: center; margin-bottom: 16px;">
+                    <span style="font-size: 2.6rem;" id="confirmIcon">⚠️</span>
+                    <h3 style="margin-top: 8px; font-size: 1.15rem;" id="confirmTitle">Konfirmasi</h3>
+                    <div style="font-size: 0.92rem; color: var(--text-dark); margin-top: 10px; line-height: 1.45;" id="confirmMessage"></div>
+                </div>
+                <div class="form-group hidden" id="deleteConfirmGroup">
+                    <label id="deleteConfirmLabel" style="color: var(--danger); font-size:0.84rem; white-space: normal; text-align: center;">Ketik "HAPUS" untuk konfirmasi permanen:</label>
+                    <input type="text" id="deleteConfirmInput" placeholder="HAPUS" autocomplete="off" oninput="checkDeleteInput()" onkeyup="checkDeleteInput()" style="border-color: var(--danger); text-align: center; font-weight: bold; letter-spacing: 1px;">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 18px;">
+                    <button class="btn-outline" onclick="closeConfirmModal()" style="flex: 1;">Batal</button>
+                    <button class="btn-danger" id="confirmActionBtn" style="flex: 1;">Lanjutkan</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Token Admin -->
+        <div id="adminTokenModal" class="modal-overlay" onclick="handleOverlayClick(event, 'adminTokenModal')">
+            <div class="modal-card">
+                <button class="modal-close" onclick="closeAdminTokenModal()">&times;</button>
+                <div style="text-align: center; margin-bottom: 18px;">
+                    <span style="font-size: 2.3rem;">🔐</span>
+                    <h3 style="margin-top: 6px; color: var(--text-dark);">Otentikasi Admin</h3>
+                    <p style="color: var(--text-muted); font-size: 0.88rem;">Masukkan 4 digit Token Admin Sekolah.</p>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="inputAdminToken" maxlength="4" style="font-size: 1.4rem; text-align: center; letter-spacing: 8px; font-weight: bold;" placeholder="••••" oninput="validateNumericOnly(this)" onkeydown="if(event.key === 'Enter') verifikasiTokenAdmin()">
+                </div>
+                <button class="btn-success" onclick="verifikasiTokenAdmin()">Submit Token</button>
+                <div id="adminTokenStatus" class="message"></div>
+            </div>
+        </div>
+
+        <!-- Modal Kelola Periode Per Sekolah (Khusus Developer) -->
+        <div id="periodeModal" class="modal-overlay" onclick="handleOverlayClick(event, 'periodeModal')">
+            <div class="modal-card modal-lg">
+                <button class="modal-close" onclick="closePeriodeModal()">&times;</button>
+                <div style="margin-bottom: 14px; padding-right: 28px;">
+                    <h3 style="font-size: 1.18rem; color: var(--text-dark); display: flex; align-items: center; gap: 8px;">
+                        <span>📅</span> <span>Kelola Periode Sekolah</span>
+                    </h3>
+                    <p id="periodeSchoolTitle" style="color: var(--section-title-color); font-weight: 700; font-size: 0.96rem; margin-top: 3px;">-</p>
+                </div>
+
+                <!-- Form Tambah Tahun Ajaran Baru (Otomatis Buat Ganjil & Genap) -->
+                <div style="background: rgba(15, 23, 42, 0.22); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+                    <label style="margin-bottom: 6px; color: var(--text-dark);">Tambah Tahun Ajaran Baru (Otomatis buat Semester Ganjil & Genap):</label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <input type="text" id="newAcademicYearInput" maxlength="9" placeholder="Contoh: 2027/2028" style="flex: 1 1 180px; font-weight: 700; letter-spacing: 1px; text-align: center;" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); tambahTahunAjaranSekolah(); }">
+                        <button id="btnTambahTahunAjaran" class="btn-success" onclick="tambahTahunAjaranSekolah()" style="width: auto; min-width: 140px;">+ Tambah Tahun</button>
+                    </div>
+                    <div id="periodeStatus" class="message" style="text-align: left;"></div>
+                </div>
+
+                <!-- Daftar Tahun Ajaran & Semester Milik Sekolah -->
+                <div id="periodeListContainer" class="periode-list-scroll">
+                    <div style="text-align: center; padding: 24px; color: var(--text-muted);">Memuat data periode...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== DASHBOARD DEVELOPER ==================== -->
+        <div id="dashboardDevSection" class="hidden">
+            <!-- Header Terkunci (Sticky) -->
+            <div class="dashboard-header">
+                <div>
+                    <h2>Dashboard Developer</h2>
+                    <p id="devWelcomeText">Kelola Infrastruktur Aplikasi Nilai Pro</p>
+                </div>
+                <button class="btn-danger" onclick="confirmLogout()" style="width: auto;">Logout</button>
+            </div>
+
+            <!-- Form Registrasi / Edit Sekolah & Rekap (2 Kolom) -->
+            <div id="devFormCard" class="card" style="border-top: 4px solid var(--primary); padding: 14px 20px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                    <h3 id="formSchoolTitle" style="font-size: 1.1rem; margin: 0;">✨ Registrasi Sekolah Baru</h3>
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                        <span id="schoolDuplicateHint" style="font-size: 0.85rem; font-weight: 700; color: var(--danger);" class="hidden">⚠️ Nama sekolah sudah terdaftar!</span>
+                        <span id="codeDuplicateHint" style="font-size: 0.85rem; font-weight: 700; color: var(--danger);" class="hidden">⚠️ Kode akses sudah dipakai sekolah lain!</span>
+                    </div>
+                </div>
+                
+                <div class="dev-form-grid">
+                    <!-- Kolom 1: Form Registrasi (75%) -->
+                    <div>
+                        <input type="hidden" id="editSchoolId">
+                        <div class="inline-form">
+                            <!-- Nama Sekolah: Otomatis Huruf Kapital & Validasi Duplikat Real-time -->
+                            <div class="form-group" style="flex: 1 1 220px;">
+                                <label>Nama Sekolah (Otomatis Kapital):</label>
+                                <input type="text" id="schoolName" placeholder="CONTOH: SMPN 1 NUSANTARA" style="text-transform: uppercase; font-weight: 600;" oninput="handleSchoolNameInput(this)" required>
+                            </div>
+                            
+                            <!-- Jenjang -->
+                            <div class="form-group" style="width: 95px; flex: 0 0 auto;">
+                                <label>Jenjang:</label>
+                                <select id="schoolTingkat">
+                                    <option value="SD/MI">SD/MI</option>
+                                    <option value="SMP/MTs" selected>SMP/MTs</option>
+                                    <option value="SMA/SMK">SMA/SMK</option>
+                                </select>
+                            </div>
+
+                            <!-- Tahun Ajaran Awal (Hanya aktif saat registrasi sekolah baru) -->
+                            <div class="form-group" id="initialYearGroup" style="width: 118px; flex: 0 0 auto;">
+                                <label>Tahun Awal:</label>
+                                <input type="text" id="initialAcademicYear" maxlength="9" value="2026/2027" placeholder="2026/2027" style="text-align: center; font-weight: 700;">
+                            </div>
+                            
+                            <!-- Langganan -->
+                            <div class="form-group" style="width: 112px; flex: 0 0 auto;">
+                                <label>Langganan:</label>
+                                <select id="isFree" onchange="toggleRombelLock()">
+                                    <option value="true">Free</option>
+                                    <option value="false">Premium</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Rombel (Aktif untuk Free maupun Premium) -->
+                            <div class="form-group" style="width: 96px; flex: 0 0 auto;">
+                                <label>Jml Rombel:</label>
+                                <div class="num-wrapper">
+                                    <button type="button" class="num-btn" id="btnRombelMin" onclick="adjustNumber('maxRombel', -1)">−</button>
+                                    <input type="text" id="maxRombel" value="1" oninput="validateNumericOnly(this)" style="text-align: center; font-weight: bold;">
+                                    <button type="button" class="num-btn" id="btnRombelPlus" onclick="adjustNumber('maxRombel', 1)">+</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Aktif Bln -->
+                            <div class="form-group" style="width: 96px; flex: 0 0 auto;">
+                                <label>Aktif (Bln):</label>
+                                <div class="num-wrapper">
+                                    <button type="button" class="num-btn" onclick="adjustNumber('activeMonths', -1)">−</button>
+                                    <input type="text" id="activeMonths" value="12" oninput="validateNumericOnly(this)" style="text-align: center; font-weight: bold;">
+                                    <button type="button" class="num-btn" onclick="adjustNumber('activeMonths', 1)">+</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Token Admin (Editable Manual: Wajib 4 Digit Angka) -->
+                            <div class="form-group" style="width: 86px; flex: 0 0 auto;">
+                                <label>Token (4 Digit):</label>
+                                <input type="text" id="adminToken" class="badge-code" maxlength="4" placeholder="0000" autocomplete="off" oninput="handleAdminTokenInput(this)" style="text-align: center; font-size: 0.98rem; padding: 6px 4px; color: var(--warning);">
+                            </div>
+
+                            <!-- Kode Akses (Editable Manual: Otomatis Kapital, 6 Huruf Unik + Tombol Acak) -->
+                            <div class="form-group" style="width: 174px; flex: 0 0 auto;">
+                                <label>Kode (6 Huruf):</label>
+                                <div style="display: flex; gap: 6px;">
+                                    <input type="text" id="accessCode" class="badge-code" maxlength="6" placeholder="ABCDEF" autocomplete="off" oninput="handleAccessCodeInput(this)" style="width: 102px; text-align: center; font-size: 0.98rem; padding: 6px 4px; text-transform: uppercase;">
+                                    <button type="button" onclick="generateCode()" class="btn-outline" style="width: 66px; padding: 0 6px;">Acak</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Tombol Simpan / Batal -->
+                            <div class="form-group" style="flex: 0 0 auto; display: flex; gap: 6px;">
+                                <button class="btn-success" id="btnSaveSchool" onclick="triggerSimpanSekolah()" style="width: auto; min-width: 92px;">Simpan</button>
+                                <button class="btn-secondary hidden" id="btnCancelEdit" onclick="resetFormSekolah()" style="width: auto; min-width: 72px;">Batal</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Kolom 2: Rekap User (25%) -->
+                    <div class="rekap-box">
+                        <div class="rekap-row">Jumlah <span style="float: right;"><span class="rekap-val" id="rekTotal">0</span> / SD/MI <span class="rekap-val" id="rekSD">0</span> SMP/MTs <span class="rekap-val" id="rekSMP">0</span> SMA/SMK <span class="rekap-val" id="rekSMA">0</span></span></div>
+                        <div class="rekap-row">Tipe <span style="float: right;"><span class="rekap-val" id="rekFree">0</span> Free / <span class="rekap-val" id="rekPremium">0</span> Premium</span></div>
+                        <div class="rekap-row">Expired < 3 bln <span style="float: right;"><span class="rekap-val" id="rekExp">0</span> pengguna</span></div>
+                    </div>
+                </div>
+                <div id="formStatus" class="message"></div>
+            </div>
+
+            <!-- Tabel Database Sekolah -->
+            <div class="card" style="padding: 16px 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                    <h3 style="margin: 0; font-size: 1.1rem;">Daftar Database Sekolah</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0;" id="tableCountInfo">Memuat data...</p>
+                </div>
+
+                <!-- Action Bar 1 Baris: Select, Deselect, Invert, Refresh, Hapus + Kotak Search + Baris/Hal -->
+                <div class="action-bar">
+                    <div class="action-group" style="flex: 1 1 auto;">
+                        <button class="btn-outline btn-sm" onclick="selectAllVisible()">Pilih Semua</button>
+                        <button class="btn-outline btn-sm" onclick="deselectAll()">Batal Pilih</button>
+                        <button class="btn-outline btn-sm" onclick="invertSelection()">Balik Pilih</button>
+                        <button class="btn-outline btn-sm" onclick="loadDataSekolah()" title="Refresh Data">🔄 Refresh</button>
+                        <button class="btn-danger btn-sm" id="btnBulkDelete" onclick="triggerBulkDelete()" disabled>Hapus</button>
+                        <input type="text" id="searchSchoolTable" placeholder="🔍 Cari nama sekolah, kode, token..." oninput="triggerSearch()" style="flex: 1 1 220px; max-width: 340px; height: 35px; border-radius: 8px; padding: 0 12px; font-size: 0.88rem;">
+                    </div>
+                    <div class="action-group" style="flex: 0 0 auto;">
+                        <label style="margin: 0; font-size: 0.88rem;">Baris:</label>
+                        <select id="itemsPerPage" onchange="changeItemsPerPage()" style="width: 100px; height: 35px; padding: 0 26px 0 10px; font-size: 0.88rem; border-radius: 8px;">
+                            <option value="10">10 / hal</option>
+                            <option value="20">20 / hal</option>
+                            <option value="50">50 / hal</option>
+                            <option value="100">100 / hal</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 38px; text-align: center;">
+                                    <input type="checkbox" id="checkAllPage" onchange="toggleSelectAllPage(this)">
+                                </th>
+                                <th style="width: 42px; text-align: center;">No</th>
+                                <th onclick="handleSort('name')">Nama Sekolah <span class="sort-icon" id="sort-name">↕️</span></th>
+                                <th onclick="handleSort('tingkat')" style="text-align: center;">Jenjang <span class="sort-icon" id="sort-tingkat">↕️</span></th>
+                                <th onclick="handleSort('access_code')" style="text-align: center;">Kode <span class="sort-icon" id="sort-access_code">↕️</span></th>
+                                <th onclick="handleSort('admin_token')" style="text-align: center;">Token <span class="sort-icon" id="sort-admin_token">↕️</span></th>
+                                <th onclick="handleSort('is_free')" style="text-align: center;">Tipe <span class="sort-icon" id="sort-is_free">↕️</span></th>
+                                <th onclick="handleSort('max_rombel')" style="text-align: center;">Rombel <span class="sort-icon" id="sort-max_rombel">↕️</span></th>
+                                <th style="text-align: center;">Periode Aktif</th>
+                                <th onclick="handleSort('exp_date')">Expired <span class="sort-icon" id="sort-exp_date">↕️</span></th>
+                                <th style="text-align: center; width: 155px;">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schoolTableBody">
+                            <tr><td colspan="11" style="text-align: center; padding: 24px; color: var(--text-muted);">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination-container">
+                    <div id="pageInfo" style="font-weight: 600; color: var(--text-dark);">Halaman 1 dari 1</div>
+                    <div class="pagination-controls">
+                        <button class="btn-outline btn-sm" id="btnPrevPage" onclick="prevPage()" style="border-radius: 8px; padding: 0 12px;">← Prev</button>
+                        <button class="btn-outline btn-sm" id="btnNextPage" onclick="nextPage()" style="border-radius: 8px; padding: 0 12px;">Next →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        /* ==================== INISIALISASI SUPABASE & STATE GLOBAL ==================== */
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentSchoolGuru = null;
+        let currentPeriodeGuru = null; // Menyimpan tahun ajaran & semester aktif untuk login Guru
+        let currentSchoolTeachers = []; 
+        let selectedGuruToLogin = null; // Menyimpan guru yang dipilih
+        let currentSchoolAdmin = null;
+        let currentPeriodeAdmin = null; // Menyimpan tahun ajaran & semester aktif untuk login Admin
+        let allSchools = [];
+        let activePeriodeBySchool = {}; // Map school_id -> { yearName, semesterName } untuk tabel Developer
+        let managingSchoolId = null; // ID sekolah yang sedang dikelola periodenya di modal Developer
+        let managingSchoolYears = []; // Cache tahun ajaran sekolah di modal Kelola Periode
+        let devClickCount = 0; 
+        let devClickTimer = null;
+        let confirmActionCb = null; 
+        let requiredDeleteConfirmPhrase = 'HAPUS'; // Frasa konfirmasi hapus dinamis ('HAPUS' / 'YAKIN HAPUS')
+        let pendingDeleteYearData = null; // Menyimpan target Tahun Ajaran yang akan dihapus permanen
+        let toastTimer = null;
+        let duplicateNotifCooldown = false;
+        let codeDuplicateNotifCooldown = false;
+        
+        // State Tabel & Paginasi
+        let filteredSchools = [];
+        let currentPage = 1;
+        let itemsPerPage = 10;
+        let sortColumn = 'created_at';
+        let sortAsc = false;
+        let selectedIds = new Set();
+        let pendingSaveData = null; 
+        let statusTimeoutMap = {}; 
+
+        /* ==================== EVENT LISTENER UNTUK TOMBOL ESC ==================== */
+        document.addEventListener('keydown', function(event) {
+            if (event.key === "Escape") {
+                // Jika modal konfirmasi terbuka di atas modal lain (misal Kelola Periode), tutup konfirmasi dulu
+                const confirmModal = document.getElementById('confirmModal');
+                if (confirmModal && confirmModal.classList.contains('active')) {
+                    closeConfirmModal();
+                    return;
+                }
+                const modals = document.querySelectorAll('.modal-overlay.active');
+                modals.forEach(modal => {
+                    modal.classList.remove('active');
+                });
+            }
+        });
+
+        function handleOverlayClick(event, modalId) {
+            if (event.target.id === modalId) {
+                document.getElementById(modalId).classList.remove('active');
+            }
+        }
+
+        /* ==================== VALIDASI INPUT, PESAN & NOTIFIKASI TOAST ==================== */
+        function showToast(msg) {
+            const toast = document.getElementById('toastNotif');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.add('show');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2200);
+        }
+
+        function showAutoMessage(elementId, msg, isError = false) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            
+            el.style.color = isError ? "var(--danger)" : "var(--primary)";
+            if (!isError && (msg.toLowerCase().includes('berhasil') || msg.toLowerCase().includes('valid') || msg.toLowerCase().includes('ditemukan') || msg.toLowerCase().includes('masuk') || msg.toLowerCase().includes('aktif'))) {
+                el.style.color = "var(--success)";
+            }
+            
+            el.innerText = msg;
+            el.style.opacity = 1;
+            
+            if (statusTimeoutMap[elementId]) clearTimeout(statusTimeoutMap[elementId]);
+            
+            statusTimeoutMap[elementId] = setTimeout(() => {
+                el.style.opacity = 0;
+                setTimeout(() => el.innerText = "", 300);
+            }, 2400); 
+        }
+
+        function validateNumericOnly(inputEl) {
+            const original = inputEl.value;
+            const cleaned = original.replace(/[^0-9]/g, '');
+            if (original !== cleaned) {
+                inputEl.value = cleaned;
+                showToast("Input ditolak! Kolom ini hanya menerima angka.");
+            }
+        }
+
+        // Validasi format Tahun Ajaran wajib YYYY/YYYY (contoh: 2026/2027)
+        function isValidAcademicYearFormat(yearStr) {
+            const regex = /^(\d{4})\/(\d{4})$/;
+            const match = yearStr.trim().match(regex);
+            if (!match) return false;
+            const y1 = parseInt(match[1], 10);
+            const y2 = parseInt(match[2], 10);
+            return y2 === y1 + 1;
+        }
+
+        function adjustNumber(inputId, delta) {
+            const input = document.getElementById(inputId);
+            if (!input || input.readOnly) return;
+            let val = parseInt(input.value) || 0;
+            val += delta;
+            if (val < 1) val = 1;
+            input.value = val;
+        }
+
+        function isDuplicateSchoolName(namaInput, editId = '') {
+            const normalized = namaInput.trim().replace(/\s+/g, ' ').toUpperCase();
+            if (!normalized) return false;
+            return allSchools.some(s => 
+                s.id !== editId && 
+                s.name.trim().replace(/\s+/g, ' ').toUpperCase() === normalized
+            );
+        }
+
+        // Cek apakah Kode Akses 6 huruf sudah dipakai sekolah lain
+        function isDuplicateAccessCode(codeInput, editId = '') {
+            const normalized = (codeInput || '').trim().toUpperCase();
+            if (!normalized) return false;
+            return allSchools.some(s => 
+                s.id !== editId && 
+                (s.access_code || '').trim().toUpperCase() === normalized
+            );
+        }
+
+        // Sinkronisasi status tombol Simpan berdasarkan validasi duplikat Nama & Kode Akses
+        function updateSaveSchoolButtonState() {
+            const editId = document.getElementById('editSchoolId')?.value || '';
+            const namaVal = document.getElementById('schoolName')?.value || '';
+            const codeVal = document.getElementById('accessCode')?.value || '';
+            const btnSave = document.getElementById('btnSaveSchool');
+            if (!btnSave) return;
+
+            const isNameDup = isDuplicateSchoolName(namaVal, editId);
+            const isCodeDup = codeVal.trim().length > 0 && isDuplicateAccessCode(codeVal, editId);
+            btnSave.disabled = (isNameDup || isCodeDup);
+        }
+
+        function handleSchoolNameInput(inputEl) {
+            const start = inputEl.selectionStart;
+            const end = inputEl.selectionEnd;
+            inputEl.value = inputEl.value.toUpperCase();
+            if (start !== null && end !== null) {
+                inputEl.setSelectionRange(start, end);
+            }
+
+            const editId = document.getElementById('editSchoolId').value;
+            const hintEl = document.getElementById('schoolDuplicateHint');
+
+            if (isDuplicateSchoolName(inputEl.value, editId)) {
+                inputEl.classList.add('input-error');
+                hintEl.classList.remove('hidden');
+                if (!duplicateNotifCooldown) {
+                    showToast("Nama sekolah sudah dipakai! Gunakan nama lain.");
+                    duplicateNotifCooldown = true;
+                    setTimeout(() => { duplicateNotifCooldown = false; }, 2800);
+                }
+            } else {
+                inputEl.classList.remove('input-error');
+                hintEl.classList.add('hidden');
+            }
+            updateSaveSchoolButtonState();
+        }
+
+        // Validasi real-time Token Admin (editable manual: hanya angka, maks 4 digit)
+        function handleAdminTokenInput(inputEl) {
+            const original = inputEl.value;
+            const cleaned = original.replace(/[^0-9]/g, '').slice(0, 4);
+            if (original !== cleaned) {
+                inputEl.value = cleaned;
+                showToast("Token Admin hanya menerima angka (4 digit)!");
+            }
+            if (cleaned.length === 4 || cleaned.length === 0) {
+                inputEl.classList.remove('input-error');
+            }
+        }
+
+        // Validasi real-time Kode Akses Sekolah (otomatis huruf kapital A-Z, maks 6 huruf, cek duplikat)
+        function handleAccessCodeInput(inputEl) {
+            const original = inputEl.value;
+            const upper = original.toUpperCase();
+            const cleaned = upper.replace(/[^A-Z]/g, '').slice(0, 6);
+
+            if (upper !== cleaned) {
+                inputEl.value = cleaned;
+                showToast("Kode Akses hanya boleh berisi 6 huruf kapital (A-Z)!");
+            } else if (original !== cleaned) {
+                const start = inputEl.selectionStart;
+                const end = inputEl.selectionEnd;
+                inputEl.value = cleaned;
+                if (start !== null && end !== null) {
+                    inputEl.setSelectionRange(start, end);
+                }
+            }
+
+            const editId = document.getElementById('editSchoolId').value;
+            const hintEl = document.getElementById('codeDuplicateHint');
+
+            if (cleaned.length > 0 && isDuplicateAccessCode(cleaned, editId)) {
+                inputEl.classList.add('input-error');
+                if (hintEl) hintEl.classList.remove('hidden');
+                if (!codeDuplicateNotifCooldown) {
+                    showToast("Kode akses sudah dipakai sekolah lain! Gunakan kode berbeda.");
+                    codeDuplicateNotifCooldown = true;
+                    setTimeout(() => { codeDuplicateNotifCooldown = false; }, 2800);
+                }
+            } else {
+                inputEl.classList.remove('input-error');
+                if (hintEl) hintEl.classList.add('hidden');
+            }
+            updateSaveSchoolButtonState();
+        }
+        
+        /* ==================== MANAJEMEN TEMA (LIGHT / DARK) ==================== */
+        function updateThemeBtnText(theme) {
+            const btn = document.getElementById('btnThemeToggle');
+            if (btn) {
+                btn.innerHTML = theme === 'dark' ? '☀️ Mode Terang' : '🌙 Mode Gelap';
+            }
+        }
+
+        function toggleTheme() {
+            const htmlEl = document.documentElement;
+            if (htmlEl.getAttribute('data-theme') === 'dark') {
+                htmlEl.setAttribute('data-theme', 'light');
+                localStorage.setItem('np_theme', 'light');
+                updateThemeBtnText('light');
+            } else {
+                htmlEl.setAttribute('data-theme', 'dark');
+                localStorage.setItem('np_theme', 'dark');
+                updateThemeBtnText('dark');
+            }
+        }
+        
+        const savedTheme = localStorage.getItem('np_theme');
+        if (savedTheme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+            updateThemeBtnText('light');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            updateThemeBtnText('dark');
+        }
+
+        /* ==================== HELPER AMBIL PERIODE AKTIF PER SEKOLAH ==================== */
+        async function fetchActivePeriodeBySchool(schoolId) {
+            const [resYear, resSem] = await Promise.all([
+                supabaseClient
+                    .from('academic_years')
+                    .select('id, name')
+                    .eq('school_id', schoolId)
+                    .eq('is_active', true)
+                    .maybeSingle(),
+                supabaseClient
+                    .from('semesters')
+                    .select('id, name, academic_year_id')
+                    .eq('school_id', schoolId)
+                    .eq('is_active', true)
+                    .maybeSingle()
+            ]);
+
+            if (resYear.error || resSem.error || !resYear.data || !resSem.data) {
+                return null;
+            }
+
+            return {
+                academic_year_id: resYear.data.id,
+                academic_year_name: resYear.data.name,
+                semester_id: resSem.data.id,
+                semester_name: resSem.data.name
+            };
+        }
+
+        /* ==================== NAVIGASI UI & TAB LOGIN ==================== */
+        function resetUI() {
+            ['guruSchoolCode', 'adminSchoolCode', 'devEmail', 'devPassword', 'inputAdminToken'].forEach(id => {
+                if(document.getElementById(id)) document.getElementById(id).value = '';
+            });
+            
+            if (document.getElementById('teacherSearchResults')) {
+                document.getElementById('teacherSearchResults').innerHTML = '';
+            }
+            if (document.getElementById('searchGuruCode')) {
+                document.getElementById('searchGuruCode').value = '';
+            }
+            
+            currentSchoolGuru = null;
+            currentPeriodeGuru = null;
+            currentSchoolAdmin = null;
+            currentPeriodeAdmin = null;
+            selectedGuruToLogin = null;
+
+            document.getElementById('guruStatus').innerText = '';
+            document.getElementById('adminStatus').innerText = '';
+            
+            document.getElementById('guruStep1').classList.remove('hidden');
+            document.getElementById('guruStep2').classList.add('hidden');
+            document.getElementById('adminStep2').classList.add('hidden');
+            document.getElementById('adminSchoolFoundInfo').classList.add('hidden');
+            
+            const btnCek = document.getElementById('btnCekAdmin');
+            if(btnCek) {
+                btnCek.innerText = 'Cek Kode';
+                btnCek.disabled = false;
+                btnCek.classList.remove('hidden');
+            }
+            const inputCode = document.getElementById('adminSchoolCode');
+            if(inputCode) inputCode.readOnly = false;
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            if (window.event && window.event.target) {
+                window.event.target.classList.add('active');
+            } else {
+                document.querySelector(`button[onclick="switchTab('${tabId}')"]`).classList.add('active');
+            }
+            
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            const selectedTab = document.getElementById(tabId);
+            selectedTab.classList.add('active');
+            resetUI();
+            
+            if (tabId === 'tabGuru') {
+                setTimeout(() => document.getElementById('guruSchoolCode').focus(), 50);
+            } else if (tabId === 'tabAdmin') {
+                setTimeout(() => document.getElementById('adminSchoolCode').focus(), 50);
+            }
+        }
+
+        function handleDevTrigger() {
+            devClickCount++;
+            if (devClickTimer) clearTimeout(devClickTimer);
+            devClickTimer = setTimeout(() => { devClickCount = 0; }, 2000);
+            if (devClickCount >= 5) {
+                devClickCount = 0; clearTimeout(devClickTimer); openDevModal();
+            }
+        }
+
+        function openDevModal() { 
+            resetUI(); 
+            document.getElementById('devModal').classList.add('active'); 
+            setTimeout(() => document.getElementById('devEmail').focus(), 50);
+        }
+        function closeDevModal() { document.getElementById('devModal').classList.remove('active'); }
+
+        /* ==================== SISTEM MODAL KONFIRMASI ==================== */
+        function openConfirmModal(title, message, isDelete, callback, requiredPhrase = 'HAPUS') {
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmMessage').innerHTML = message;
+            
+            const btn = document.getElementById('confirmActionBtn');
+            const delGroup = document.getElementById('deleteConfirmGroup');
+            const delInput = document.getElementById('deleteConfirmInput');
+            const delLabel = document.getElementById('deleteConfirmLabel');
+            
+            requiredDeleteConfirmPhrase = requiredPhrase || 'HAPUS';
+
+            if (isDelete) {
+                document.getElementById('confirmTitle').style.color = "var(--danger)";
+                document.getElementById('confirmIcon').innerText = "🗑️";
+                btn.className = "btn-danger";
+                btn.innerText = "Hapus Permanen";
+                delGroup.classList.remove('hidden');
+                if (delLabel) {
+                    delLabel.innerHTML = `Ketik <strong>"${requiredDeleteConfirmPhrase}"</strong> (huruf kapital persis) untuk konfirmasi permanen:`;
+                }
+                delInput.placeholder = requiredDeleteConfirmPhrase;
+                delInput.value = '';
+                btn.disabled = true;
+                setTimeout(() => delInput.focus(), 80);
+            } else {
+                document.getElementById('confirmTitle').style.color = "var(--text-dark)";
+                document.getElementById('confirmIcon').innerText = "❓";
+                btn.className = "btn-success";
+                btn.innerText = "Lanjutkan";
+                delGroup.classList.add('hidden');
+                btn.disabled = false;
+            }
+            confirmActionCb = callback;
+            btn.onclick = () => { if(confirmActionCb) confirmActionCb(); };
+            
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        function checkDeleteInput() {
+            const val = document.getElementById('deleteConfirmInput').value;
+            document.getElementById('confirmActionBtn').disabled = (val !== requiredDeleteConfirmPhrase);
+        }
+        function closeConfirmModal() { document.getElementById('confirmModal').classList.remove('active'); }
+        
+        function confirmLogout() {
+            openConfirmModal("Logout", "Yakin ingin keluar dari Dashboard Developer?", false, async () => {
+                await supabaseClient.auth.signOut();
+                sessionStorage.removeItem('devLoggedIn'); 
+                window.location.reload(); 
+            });
+        }
+
+        /* ==================== AUTENTIKASI GURU (DENGAN DETEKSI PERIODE AKTIF) ==================== */
+        async function verifikasiKodeGuru() {
+            const code = document.getElementById('guruSchoolCode').value.trim().toUpperCase();
+            const btnVerif = document.getElementById('btnVerifikasiGuru');
+
+            if (!code || code.length !== 6) {
+                showAutoMessage('guruStatus', "Masukkan Kode Sekolah 6 Karakter!", true);
+                return;
+            }
+
+            document.getElementById('guruStatus').style.color = "var(--primary)"; 
+            document.getElementById('guruStatus').innerText = "Memeriksa kode akses & periode aktif...";
+            if (btnVerif) btnVerif.disabled = true;
+
+            const { data, error } = await supabaseClient.from('schools').select('id, name, tingkat').eq('access_code', code).single();
+
+            if (error || !data) {
+                if (btnVerif) btnVerif.disabled = false;
+                showAutoMessage('guruStatus', "Kode akses sekolah tidak ditemukan!", true);
+                return;
+            }
+
+            // Ambil periode aktif (Tahun Ajaran & Semester) khusus untuk sekolah ini
+            const activePeriode = await fetchActivePeriodeBySchool(data.id);
+            if (!activePeriode) {
+                if (btnVerif) btnVerif.disabled = false;
+                showAutoMessage('guruStatus', "Periode Tahun Ajaran / Semester sekolah ini belum diaktifkan. Hubungi Developer.", true);
+                return;
+            }
+
+            currentSchoolGuru = data;
+            currentPeriodeGuru = activePeriode;
+            
+            // Ambil data guru khusus untuk Tahun Ajaran yang sedang aktif
+            const { data: teachers, error: errT } = await supabaseClient
+                .from('gurus')
+                .select('id, name, code')
+                .eq('school_id', currentSchoolGuru.id)
+                .eq('academic_year_id', activePeriode.academic_year_id);
+
+            if (btnVerif) btnVerif.disabled = false;
+
+            if (!errT && teachers) {
+                currentSchoolTeachers = teachers;
+            } else {
+                currentSchoolTeachers = [];
+            }
+
+            document.getElementById('guruStatus').innerText = "";
+            document.getElementById('guruStep1').classList.add('hidden');
+            
+            const step2 = document.getElementById('guruStep2');
+            step2.classList.remove('hidden');
+            document.getElementById('verifiedSchoolInfoGuru').innerHTML = `
+                <span style="font-size: 1rem; display: block; margin-bottom: 2px;">✅ <strong>Sekolah Ditemukan</strong></span>
+                <strong>${data.name}</strong> (${data.tingkat})<br>
+                <span style="font-size: 0.86rem; opacity: 0.92; display: inline-block; margin-top: 3px;">📅 Periode Aktif: <strong>${activePeriode.academic_year_name} — Semester ${activePeriode.semester_name}</strong></span>
+            `;
+            
+            // Reset form pencarian dan mulai flow search
+            resetPencarianGuru();
+        }
+
+        function resetPencarianGuru() {
+            const searchInput = document.getElementById('searchGuruCode');
+            const resultsContainer = document.getElementById('teacherSearchResults');
+            const btnMasuk = document.getElementById('btnMasukGuru');
+            
+            searchInput.value = '';
+            resultsContainer.style.display = 'none';
+            resultsContainer.innerHTML = '';
+            btnMasuk.classList.add('hidden');
+            selectedGuruToLogin = null;
+            
+            if (!currentSchoolTeachers || currentSchoolTeachers.length === 0) {
+                resultsContainer.innerHTML = `<div style="padding:15px; text-align:center; color:var(--danger); font-weight:bold;">Belum ada guru yang terdaftar di Tahun Ajaran ${currentPeriodeGuru?.academic_year_name || 'aktif'}.</div>`;
+                resultsContainer.style.display = 'block';
+                searchInput.disabled = true;
+                searchInput.placeholder = "Data guru kosong";
+            } else {
+                searchInput.disabled = false;
+                searchInput.placeholder = "KODE (Min. 3 Huruf)";
+                setTimeout(() => searchInput.focus(), 100);
+            }
+        }
+
+        function cariGuru(val) {
+            const query = val.trim().toUpperCase();
+            const resultsContainer = document.getElementById('teacherSearchResults');
+            const btnMasuk = document.getElementById('btnMasukGuru');
+            
+            // Reset state saat ngetik
+            selectedGuruToLogin = null;
+            btnMasuk.classList.add('hidden');
+
+            if (query.length < 3) {
+                resultsContainer.style.display = 'none';
+                return;
+            }
+
+            // Filter guru HANYA BERDASARKAN KODE (pencarian wajib pakai kode)
+            const filtered = currentSchoolTeachers.filter(g => g.code && g.code.toUpperCase().includes(query));
+
+            if (filtered.length === 0) {
+                resultsContainer.innerHTML = '<div style="padding:10px; text-align:center; color:var(--danger); font-size:0.9rem;">Guru dengan kode tersebut tidak ditemukan.</div>';
+                resultsContainer.style.display = 'block';
+                return;
+            }
+
+            resultsContainer.innerHTML = filtered.map(g => `
+                <div class="teacher-item" id="guru_item_${g.id}" style="padding:10px 14px; border-bottom:1px solid var(--border-color); cursor:pointer; transition:background 0.2s;" 
+                     onclick="pilihGuru('${g.id}', '${g.name.replace(/'/g, "\\'")}')" 
+                     onmouseover="if(selectedGuruToLogin?.id !== '${g.id}') this.style.background='var(--row-hover)'" 
+                     onmouseout="if(selectedGuruToLogin?.id !== '${g.id}') this.style.background='transparent'">
+                    <strong style="color:var(--text-dark);">${g.name}</strong> <span style="color:var(--text-muted); font-size:0.85rem;">(Kode: ${g.code})</span>
+                </div>
+            `).join('');
+            
+            resultsContainer.style.display = 'block';
+        }
+
+        function pilihGuru(id, name) {
+            selectedGuruToLogin = { id, name };
+            
+            // Reset tampilan (hapus highlight dari semua item)
+            document.querySelectorAll('.teacher-item').forEach(item => {
+                item.style.background = 'transparent';
+                item.style.borderLeft = 'none';
+            });
+            
+            // Highlight item yang diklik
+            const selectedEl = document.getElementById(`guru_item_${id}`);
+            if (selectedEl) {
+                selectedEl.style.background = 'var(--row-selected)';
+                selectedEl.style.borderLeft = '4px solid var(--primary)';
+            }
+            
+            // Munculkan tombol masuk
+            document.getElementById('btnMasukGuru').classList.remove('hidden');
+        }
+
+        function eksekusiMasukGuru() {
+            if (!selectedGuruToLogin) return;
+            langsungMasukGuru(selectedGuruToLogin.id, selectedGuruToLogin.name);
+        }
+
+        function langsungMasukGuru(teacherId, teacherName) {
+            if (!currentSchoolGuru || !currentPeriodeGuru) return;
+
+            // Simpan sesi login guru beserta periode aktif sekolah ke sessionStorage
+            const guruSession = {
+                id: teacherId,
+                display_name: teacherName,
+                school_id: currentSchoolGuru.id,
+                school_name: currentSchoolGuru.name,
+                academic_year_id: currentPeriodeGuru.academic_year_id,
+                academic_year_name: currentPeriodeGuru.academic_year_name,
+                semester_id: currentPeriodeGuru.semester_id,
+                semester_name: currentPeriodeGuru.semester_name
+            };
+            sessionStorage.setItem('guruData', JSON.stringify(guruSession));
+            
+            showAutoMessage('guruStatus', `Masuk sebagai ${teacherName}...`);
+            setTimeout(() => {
+                window.location.href = 'guru_dashboard.html';
+            }, 300);
+        }
+
+        /* ==================== AUTENTIKASI ADMIN SEKOLAH (DENGAN DETEKSI PERIODE AKTIF) ==================== */
+        function openAdminTokenModal() {
+            document.getElementById('inputAdminToken').value = '';
+            document.getElementById('adminTokenStatus').innerText = '';
+            document.getElementById('adminTokenModal').classList.add('active');
+            setTimeout(() => document.getElementById('inputAdminToken').focus(), 50);
+        }
+
+        function closeAdminTokenModal() {
+            document.getElementById('adminTokenModal').classList.remove('active');
+        }
+
+        function verifikasiTokenAdmin() {
+            const inputToken = document.getElementById('inputAdminToken').value.trim();
+
+            if (inputToken.length !== 4) {
+                showAutoMessage('adminTokenStatus', "Masukkan 4 digit token!", true);
+                return;
+            }
+
+            if (currentSchoolAdmin && currentSchoolAdmin.admin_token === inputToken) {
+                showAutoMessage('adminTokenStatus', "Token valid! Mengalihkan...");
+                
+                setTimeout(() => {
+                    closeAdminTokenModal();
+                    masukAdminDash();
+                }, 300);
+            } else {
+                showAutoMessage('adminTokenStatus', "Token Admin salah!", true);
+                document.getElementById('inputAdminToken').value = '';
+                document.getElementById('inputAdminToken').focus();
+            }
+        }
+
+        async function cekKodeAdmin() {
+            const code = document.getElementById('adminSchoolCode').value.trim().toUpperCase();
+            const infoBox = document.getElementById('adminSchoolFoundInfo');
+            const btnCek = document.getElementById('btnCekAdmin');
+            const step2 = document.getElementById('adminStep2');
+            
+            if (code.length !== 6) {
+                showAutoMessage('adminStatus', "Kode akses harus 6 karakter.", true);
+                return;
+            }
+
+            document.getElementById('adminStatus').style.color = "var(--primary)";
+            document.getElementById('adminStatus').innerText = "Memverifikasi database & periode aktif...";
+            btnCek.disabled = true;
+            btnCek.innerHTML = "Cek... ⏳";
+
+            const cleanCode = code.replace(/\s+/g, '');
+
+            const { data, error } = await supabaseClient.from('schools').select('*').eq('access_code', cleanCode).single();
+
+            if (error || !data) {
+                let errText = "Kode Sekolah Tidak Valid!";
+                if (error && error.code === 'PGRST116') {
+                    errText = "Kode Sekolah Tidak Ditemukan!";
+                } else if(error) {
+                    errText = "Gagal: " + error.message;
+                }
+                showAutoMessage('adminStatus', errText, true);
+                
+                infoBox.classList.add('hidden');
+                step2.classList.add('hidden');
+                currentSchoolAdmin = null;
+                currentPeriodeAdmin = null;
+                btnCek.disabled = false;
+                btnCek.innerText = "Cek Kode";
+                return;
+            }
+
+            // Ambil periode aktif khusus sekolah ini
+            const activePeriode = await fetchActivePeriodeBySchool(data.id);
+            if (!activePeriode) {
+                showAutoMessage('adminStatus', "Periode Tahun Ajaran / Semester sekolah ini belum diaktifkan. Hubungi Developer.", true);
+                infoBox.classList.add('hidden');
+                step2.classList.add('hidden');
+                currentSchoolAdmin = null;
+                currentPeriodeAdmin = null;
+                btnCek.disabled = false;
+                btnCek.innerText = "Cek Kode";
+                return;
+            }
+
+            currentSchoolAdmin = data;
+            currentPeriodeAdmin = activePeriode;
+            document.getElementById('adminStatus').innerText = "";
+            
+            infoBox.className = "info-box info-box-success";
+            infoBox.innerHTML = `<span style="font-size: 1rem; display: block; margin-bottom: 2px;">✅ <strong>Data Sekolah Ditemukan</strong></span>
+                                 <strong style="font-size: 1.05rem; color:var(--text-dark);">${data.name}</strong><br>
+                                 <span style="color:var(--text-muted); font-size:0.88rem; margin-top:2px; display:inline-block;">Jenjang: ${data.tingkat} | Status: <strong>${data.is_free ? 'Free' : 'Premium'}</strong></span><br>
+                                 <span style="font-size:0.86rem; margin-top:3px; display:inline-block;">📅 Periode Aktif: <strong>${activePeriode.academic_year_name} — Semester ${activePeriode.semester_name}</strong></span>`;
+            infoBox.classList.remove('hidden');
+            
+            btnCek.classList.add('hidden');
+            document.getElementById('adminSchoolCode').readOnly = true;
+            
+            step2.classList.remove('hidden');
+            setTimeout(() => { document.getElementById('btnMasukAdmin').focus(); }, 50);
+        }
+
+        function masukAdminDash() {
+            if(!currentSchoolAdmin || !currentPeriodeAdmin) return;
+            
+            // Gabungkan data sekolah dengan periode aktif ke sessionStorage
+            const adminSessionPayload = {
+                ...currentSchoolAdmin,
+                academic_year_id: currentPeriodeAdmin.academic_year_id,
+                academic_year_name: currentPeriodeAdmin.academic_year_name,
+                semester_id: currentPeriodeAdmin.semester_id,
+                semester_name: currentPeriodeAdmin.semester_name
+            };
+            sessionStorage.setItem('adminSchoolData', JSON.stringify(adminSessionPayload));
+            
+            // Redirect ke file dashboard admin
+            window.location.href = 'admin_dashboard.html';
+        }
+
+        /* ==================== AUTENTIKASI DEVELOPER ==================== */
+        async function prosesLoginDev() {
+            const email = document.getElementById('devEmail').value;
+            const password = document.getElementById('devPassword').value;
+            
+            if(!email || !password) {
+                 showAutoMessage('devStatus', "Email dan password wajib diisi!", true);
+                 return;
+            }
+            
+            document.getElementById('devStatus').style.color = "var(--primary)";
+            document.getElementById('devStatus').innerText = "Memeriksa kredensial...";
+            
+            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if (error) {
+                showAutoMessage('devStatus', "Gagal: " + error.message, true);
+            } else { 
+                closeDevModal(); 
+                cekSesi(); 
+            }
+        }
+
+        async function cekSesi() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                const { data } = await supabaseClient.from('user_roles').select('name, role').eq('user_id', session.user.id).single();
+                if (data && data.role === 'dev') {
+                    document.getElementById('devWelcomeText').innerText = `Halo, ${data.name}`;
+                    document.getElementById('loginSection').classList.add('hidden');
+                    document.getElementById('dashboardDevSection').classList.remove('hidden');
+                    document.body.classList.add('dashboard-mode'); 
+                    resetFormSekolah();
+                    loadDataSekolah();
+                    window.scrollTo({ top: 0 });
+                }
+            }
+        }
+
+        /* ==================== FETCH DATA & ENGINE TABEL SEKOLAH ==================== */
+        function hitungRekap(data) {
+            let total = data.length;
+            let sd = 0, smp = 0, sma = 0;
+            let free = 0, premium = 0;
+            let exp = 0;
+            
+            const now = new Date();
+            const threeMonthsLater = new Date();
+            threeMonthsLater.setMonth(now.getMonth() + 3);
+
+            data.forEach(s => {
+                if (s.tingkat === 'SD/MI') sd++;
+                else if (s.tingkat === 'SMP/MTs') smp++;
+                else if (s.tingkat === 'SMA/SMK') sma++;
+
+                if (s.is_free) free++; else premium++;
+
+                const expDate = new Date(s.exp_date);
+                if (expDate < threeMonthsLater) exp++;
+            });
+
+            document.getElementById('rekTotal').innerText = total;
+            document.getElementById('rekSD').innerText = sd;
+            document.getElementById('rekSMP').innerText = smp;
+            document.getElementById('rekSMA').innerText = sma;
+            document.getElementById('rekFree').innerText = free;
+            document.getElementById('rekPremium').innerText = premium;
+            document.getElementById('rekExp').innerText = exp;
+        }
+
+        async function loadDataSekolah() {
+            const tbody = document.getElementById('schoolTableBody');
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 28px; color: var(--text-muted);">⏳ Mengambil data dari server...</td></tr>';
+            
+            // Ambil data sekolah sekaligus tahun ajaran aktif & semester aktif semua sekolah secara paralel
+            const [resSchools, resYears, resSems] = await Promise.all([
+                supabaseClient.from('schools').select('*'),
+                supabaseClient.from('academic_years').select('school_id, name').eq('is_active', true),
+                supabaseClient.from('semesters').select('school_id, name').eq('is_active', true)
+            ]);
+
+            if (!resSchools.error && resSchools.data) {
+                allSchools = resSchools.data;
+
+                // Petakan periode aktif per school_id
+                activePeriodeBySchool = {};
+                if (!resYears.error && resYears.data) {
+                    resYears.data.forEach(y => {
+                        if (!activePeriodeBySchool[y.school_id]) activePeriodeBySchool[y.school_id] = {};
+                        activePeriodeBySchool[y.school_id].yearName = y.name;
+                    });
+                }
+                if (!resSems.error && resSems.data) {
+                    resSems.data.forEach(sem => {
+                        if (!activePeriodeBySchool[sem.school_id]) activePeriodeBySchool[sem.school_id] = {};
+                        activePeriodeBySchool[sem.school_id].semesterName = sem.name;
+                    });
+                }
+
+                hitungRekap(resSchools.data);
+                
+                // Cek ulang validasi nama & kode akses jika user sedang mengetik saat data selesai dimuat
+                const schoolNameInput = document.getElementById('schoolName');
+                if (schoolNameInput && schoolNameInput.value.trim() !== '') {
+                    handleSchoolNameInput(schoolNameInput);
+                }
+                const accessCodeInput = document.getElementById('accessCode');
+                if (accessCodeInput && accessCodeInput.value.trim() !== '') {
+                    handleAccessCodeInput(accessCodeInput);
+                }
+                triggerSearch();
+            } else {
+                tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; padding: 20px; color: var(--danger);">Gagal memuat data: ${resSchools.error?.message || 'Unknown error'}</td></tr>`;
+            }
+        }
+
+        function triggerSearch() {
+            currentPage = 1;
+            renderTableSekolah();
+        }
+
+        function changeItemsPerPage() {
+            itemsPerPage = parseInt(document.getElementById('itemsPerPage').value);
+            currentPage = 1;
+            renderTableSekolah();
+        }
+
+        function handleSort(col) {
+            if (sortColumn === col) sortAsc = !sortAsc;
+            else { sortColumn = col; sortAsc = true; }
+            
+            document.querySelectorAll('.sort-icon').forEach(el => el.innerText = '↕️');
+            const sortEl = document.getElementById(`sort-${col}`);
+            if(sortEl) sortEl.innerText = sortAsc ? '🔼' : '🔽';
+            renderTableSekolah();
+        }
+
+        function renderTableSekolah() {
+            const filterTxt = document.getElementById('searchSchoolTable').value.toLowerCase();
+            filteredSchools = allSchools.filter(s => 
+                s.name.toLowerCase().includes(filterTxt) || 
+                (s.access_code && s.access_code.toLowerCase().includes(filterTxt)) ||
+                (s.admin_token && s.admin_token.toLowerCase().includes(filterTxt))
+            );
+
+            filteredSchools.sort((a, b) => {
+                let valA = a[sortColumn] ?? ''; let valB = b[sortColumn] ?? '';
+                if(typeof valA === 'string') valA = valA.toLowerCase();
+                if(typeof valB === 'string') valB = valB.toLowerCase();
+                
+                if (valA < valB) return sortAsc ? -1 : 1;
+                if (valA > valB) return sortAsc ? 1 : -1;
+                return 0;
+            });
+
+            const totalItems = filteredSchools.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+            if (currentPage > totalPages) currentPage = totalPages || 1;
+            
+            const startIdx = (currentPage - 1) * itemsPerPage;
+            const paginated = filteredSchools.slice(startIdx, startIdx + itemsPerPage);
+
+            const tbody = document.getElementById('schoolTableBody');
+            if (paginated.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding: 28px; color: var(--text-muted);">Tidak ada data sekolah ditemukan.</td></tr>';
+            } else {
+                const now = new Date();
+                tbody.innerHTML = paginated.map((s, index) => {
+                    const isExp = new Date(s.exp_date) < now;
+                    const expStyle = isExp ? "color:var(--danger); font-weight:bold;" : "color:var(--success); font-weight:600;";
+                    let expFmt = s.exp_date;
+                    if (s.exp_date) {
+                        const pts = s.exp_date.split('-');
+                        if (pts.length === 3) expFmt = `${pts[2]} ${pts[1]} ${pts[0]}`;
+                    }
+                    const expText = isExp ? `${expFmt} (Exp)` : expFmt;
+                    const isChecked = selectedIds.has(s.id);
+                    const rowClass = isChecked ? 'selected-row' : '';
+                    const tokenDisplay = s.admin_token ? `<span class="badge-token">${s.admin_token}</span>` : `<span style="color:var(--text-muted);">-</span>`;
+                    
+                    const pInfo = activePeriodeBySchool[s.id];
+                    const periodeDisplay = (pInfo && pInfo.yearName && pInfo.semesterName)
+                        ? `<span class="badge-periode-table">${pInfo.yearName} • ${pInfo.semesterName}</span>`
+                        : `<span style="color:var(--danger); font-size:0.8rem; font-weight:700;">Belum diatur</span>`;
+
+                    return `
+                    <tr class="${rowClass}">
+                        <td style="text-align:center;"><input type="checkbox" value="${s.id}" ${isChecked ? 'checked' : ''} onchange="toggleRowSelect(this, '${s.id}')"></td>
+                        <td style="text-align:center; color: var(--text-muted);">${startIdx + index + 1}</td>
+                        <td><strong style="color: var(--text-dark);">${s.name}</strong></td>
+                        <td style="text-align:center;">${s.tingkat}</td>
+                        <td style="text-align:center;"><span class="badge-code">${s.access_code}</span></td>
+                        <td style="text-align:center;">${tokenDisplay}</td>
+                        <td style="text-align:center;">${s.is_free ? '<span class="badge badge-free">Free</span>' : '<span class="badge badge-premium">Premium</span>'}</td>
+                        <td style="text-align:center; font-weight:bold;">${s.max_rombel}</td>
+                        <td style="text-align:center;">${periodeDisplay}</td>
+                        <td style="${expStyle}">${expText}</td>
+                        <td style="text-align:center;">
+                            <div style="display:inline-flex; gap:6px; align-items:center;">
+                                <button class="btn-periode btn-sm" onclick="openPeriodeModal('${s.id}')" style="padding: 0 10px; height: 30px; border-radius:6px;" title="Kelola Tahun Ajaran & Semester">📅 Periode</button>
+                                <button class="btn-outline btn-sm" onclick="editSekolah('${s.id}')" style="padding: 0 10px; height: 30px; border-radius:6px;">Edit</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+
+            document.getElementById('tableCountInfo').innerHTML = `Total: <strong>${totalItems}</strong> sekolah | Terpilih: <strong>${selectedIds.size}</strong>`;
+            document.getElementById('pageInfo').innerText = `Hal ${currentPage} / ${totalPages}`;
+            document.getElementById('btnPrevPage').disabled = (currentPage <= 1);
+            document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
+            
+            syncCheckAllPageBox(paginated);
+            updateActionButtons();
+        }
+
+        function prevPage() { if(currentPage > 1) { currentPage--; renderTableSekolah(); } }
+        function nextPage() { const totalPages = Math.ceil(filteredSchools.length/itemsPerPage); if(currentPage < totalPages) { currentPage++; renderTableSekolah(); } }
+
+        /* ==================== MANAJEMEN PERIODE PER SEKOLAH (KHUSUS DEVELOPER) ==================== */
+        function openPeriodeModal(schoolId) {
+            const school = allSchools.find(s => s.id === schoolId);
+            if (!school) return;
+
+            managingSchoolId = schoolId;
+            document.getElementById('periodeSchoolTitle').innerText = `${school.name} (${school.tingkat})`;
+            document.getElementById('newAcademicYearInput').value = '';
+            document.getElementById('periodeStatus').innerText = '';
+            document.getElementById('periodeModal').classList.add('active');
+
+            loadPeriodeSekolah(schoolId);
+        }
+
+        function closePeriodeModal() {
+            document.getElementById('periodeModal').classList.remove('active');
+            managingSchoolId = null;
+            managingSchoolYears = [];
+        }
+
+        async function loadPeriodeSekolah(schoolId) {
+            const container = document.getElementById('periodeListContainer');
+            container.innerHTML = '<div style="text-align: center; padding: 24px; color: var(--text-muted);">⏳ Memuat daftar tahun ajaran & semester...</div>';
+
+            const [resYears, resSems] = await Promise.all([
+                supabaseClient
+                    .from('academic_years')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .order('name', { ascending: false }),
+                supabaseClient
+                    .from('semesters')
+                    .select('*')
+                    .eq('school_id', schoolId)
+                    .order('name', { ascending: true }) // Ganjil dulu, baru Genap
+            ]);
+
+            if (resYears.error || resSems.error) {
+                container.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--danger);">Gagal memuat periode: ${(resYears.error || resSems.error).message}</div>`;
+                return;
+            }
+
+            const years = resYears.data || [];
+            const sems = resSems.data || [];
+            managingSchoolYears = years;
+
+            // Update saran otomatis di input tahun ajaran baru (tahun terbaru + 1)
+            if (years.length > 0) {
+                const latestMatch = years[0].name.match(/^(\d{4})\/(\d{4})$/);
+                if (latestMatch) {
+                    const nextStart = parseInt(latestMatch[2], 10);
+                    document.getElementById('newAcademicYearInput').placeholder = `Contoh: ${nextStart}/${nextStart + 1}`;
+                }
+            } else {
+                document.getElementById('newAcademicYearInput').placeholder = 'Contoh: 2026/2027';
+            }
+
+            if (years.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 24px; color: var(--text-muted);">Belum ada tahun ajaran terdaftar untuk sekolah ini. Silakan tambahkan di atas.</div>';
+                return;
+            }
+
+            container.innerHTML = years.map(y => {
+                const yearSems = sems.filter(s => s.academic_year_id === y.id);
+                // Pastikan urutan Ganjil lalu Genap
+                yearSems.sort((a, b) => (a.name === 'Ganjil' ? -1 : 1));
+
+                const yearBadge = y.is_active
+                    ? '<span class="badge badge-active">● Tahun Aktif</span>'
+                    : '<span class="badge badge-archive">Arsip</span>';
+
+                const safeYearName = String(y.name || '').replace(/'/g, "\\'");
+                const yearStatusBtn = y.is_active
+                    ? '<button class="btn-outline btn-sm" disabled style="height: 30px; font-size: 0.78rem; padding: 0 10px;">Sedang Aktif</button>'
+                    : `<button class="btn-periode btn-sm" onclick="aktifkanTahunAjaran('${y.id}', '${safeYearName}')" style="height: 30px; font-size: 0.78rem; padding: 0 10px;">Aktifkan Tahun</button>`;
+
+                // Tombol Hapus Tahun Ajaran berwarna merah tepat di sebelah kanan tombol Aktifkan/Sedang Aktif
+                // Terkunci (disabled) otomatis jika tahun ajaran sedang aktif
+                const yearDeleteBtn = y.is_active
+                    ? '<button class="btn-danger btn-sm" disabled title="Tahun ajaran yang sedang aktif tidak dapat dihapus" style="height: 30px; font-size: 0.78rem; padding: 0 10px;">🗑️ Hapus</button>'
+                    : `<button class="btn-danger btn-sm" id="btnDelYear-${y.id}" onclick="triggerHapusTahunAjaran('${y.id}', '${safeYearName}')" title="Hapus tahun ajaran arsip ini secara permanen" style="height: 30px; font-size: 0.78rem; padding: 0 10px;">🗑️ Hapus</button>`;
+
+                const yearBtn = `
+                    <div class="year-card-actions">
+                        ${yearStatusBtn}
+                        ${yearDeleteBtn}
+                    </div>
+                `;
+
+                const semHtml = yearSems.map(sem => {
+                    const semActiveClass = sem.is_active ? 'is-active-sem' : '';
+                    const semStatusBtn = sem.is_active
+                        ? '<span class="badge badge-active">✓ Aktif</span>'
+                        : `<button class="btn-outline btn-sm" onclick="aktifkanSemester('${sem.id}', '${y.id}', '${y.name}', '${sem.name}')" style="height: 28px; font-size: 0.76rem; padding: 0 9px; border-radius: 6px;">Aktifkan</button>`;
+
+                    return `
+                        <div class="semester-pill ${semActiveClass}">
+                            <span style="font-weight: 700; font-size: 0.86rem; color: var(--text-dark);">Semester ${sem.name}</span>
+                            ${semStatusBtn}
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="year-card ${y.is_active ? 'is-active-year' : ''}">
+                        <div class="year-card-header">
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <strong style="font-size: 1rem; color: var(--text-dark);">Tahun Ajaran ${y.name}</strong>
+                                ${yearBadge}
+                            </div>
+                            ${yearBtn}
+                        </div>
+                        <div class="semester-grid">
+                            ${semHtml || '<div style="color:var(--danger); font-size:0.82rem;">Data semester tidak ditemukan.</div>'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Tambah Tahun Ajaran Baru khusus sekolah ini + auto-generate Semester Ganjil & Genap
+        async function tambahTahunAjaranSekolah() {
+            if (!managingSchoolId) return;
+
+            const inputEl = document.getElementById('newAcademicYearInput');
+            const btnEl = document.getElementById('btnTambahTahunAjaran');
+            const yearName = inputEl.value.trim();
+
+            if (!yearName) {
+                showAutoMessage('periodeStatus', "Masukkan Tahun Ajaran (contoh: 2027/2028)!", true);
+                inputEl.focus();
+                return;
+            }
+
+            if (!isValidAcademicYearFormat(yearName)) {
+                showAutoMessage('periodeStatus', "Format salah! Wajib YYYY/YYYY berurutan (contoh: 2027/2028).", true);
+                showToast("Format tahun ajaran wajib YYYY/YYYY berurutan!");
+                inputEl.focus();
+                return;
+            }
+
+            if (managingSchoolYears.some(y => y.name === yearName)) {
+                showAutoMessage('periodeStatus', `Tahun Ajaran ${yearName} sudah ada di sekolah ini!`, true);
+                showToast("Tahun ajaran sudah terdaftar!");
+                return;
+            }
+
+            btnEl.disabled = true;
+            btnEl.innerText = "Membuat... ⏳";
+
+            const isFirstYear = managingSchoolYears.length === 0;
+
+            // 1. Insert ke academic_years
+            const { data: newYear, error: errYear } = await supabaseClient
+                .from('academic_years')
+                .insert([{
+                    school_id: managingSchoolId,
+                    name: yearName,
+                    is_active: isFirstYear
+                }])
+                .select()
+                .single();
+
+            if (errYear || !newYear) {
+                btnEl.disabled = false;
+                btnEl.innerText = "+ Tambah Tahun";
+                showAutoMessage('periodeStatus', "Gagal membuat tahun ajaran: " + (errYear?.message || 'Error'), true);
+                return;
+            }
+
+            // 2. Auto-generate Semester Ganjil & Genap di bawah tahun baru
+            const { error: errSem } = await supabaseClient
+                .from('semesters')
+                .insert([
+                    { school_id: managingSchoolId, academic_year_id: newYear.id, name: 'Ganjil', is_active: isFirstYear },
+                    { school_id: managingSchoolId, academic_year_id: newYear.id, name: 'Genap', is_active: false }
+                ]);
+
+            btnEl.disabled = false;
+            btnEl.innerText = "+ Tambah Tahun";
+
+            if (errSem) {
+                showAutoMessage('periodeStatus', "Tahun dibuat, tetapi gagal membuat semester: " + errSem.message, true);
+            } else {
+                inputEl.value = '';
+                showAutoMessage('periodeStatus', `✅ Tahun ${yearName} (Ganjil & Genap) berhasil ditambahkan!`);
+                await loadPeriodeSekolah(managingSchoolId);
+                await loadDataSekolah();
+            }
+        }
+
+        // Mengaktifkan Tahun Ajaran -> Otomatis menonaktifkan tahun lain & mengaktifkan Semester Ganjil tahun ini
+        async function aktifkanTahunAjaran(yearId, yearName) {
+            if (!managingSchoolId) return;
+
+            document.getElementById('periodeStatus').style.color = "var(--primary)";
+            document.getElementById('periodeStatus').innerText = `Mengaktifkan Tahun ${yearName}...`;
+
+            // Cari semester Ganjil milik tahun target
+            const { data: semGanjil, error: errFind } = await supabaseClient
+                .from('semesters')
+                .select('id, name')
+                .eq('school_id', managingSchoolId)
+                .eq('academic_year_id', yearId)
+                .eq('name', 'Ganjil')
+                .maybeSingle();
+
+            if (errFind || !semGanjil) {
+                showAutoMessage('periodeStatus', "Semester Ganjil tidak ditemukan untuk tahun ini!", true);
+                return;
+            }
+
+            // Urutan wajib: Nonaktifkan dulu semua yang aktif di sekolah ini (agar lolos Unique Index)
+            const { error: errDeactY } = await supabaseClient
+                .from('academic_years')
+                .update({ is_active: false })
+                .eq('school_id', managingSchoolId)
+                .eq('is_active', true);
+
+            if (errDeactY) {
+                showAutoMessage('periodeStatus', "Gagal menonaktifkan tahun sebelumnya: " + errDeactY.message, true);
+                return;
+            }
+
+            const { error: errActY } = await supabaseClient
+                .from('academic_years')
+                .update({ is_active: true })
+                .eq('id', yearId);
+
+            if (errActY) {
+                showAutoMessage('periodeStatus', "Gagal mengaktifkan tahun: " + errActY.message, true);
+                return;
+            }
+
+            // Sinkronisasi Semester: Nonaktifkan semua semester sekolah ini, lalu aktifkan Ganjil tahun ini
+            await supabaseClient
+                .from('semesters')
+                .update({ is_active: false })
+                .eq('school_id', managingSchoolId)
+                .eq('is_active', true);
+
+            const { error: errActS } = await supabaseClient
+                .from('semesters')
+                .update({ is_active: true })
+                .eq('id', semGanjil.id);
+
+            if (errActS) {
+                showAutoMessage('periodeStatus', "Tahun aktif, tetapi gagal mengaktifkan semester: " + errActS.message, true);
+            } else {
+                showAutoMessage('periodeStatus', `✅ Tahun ${yearName} (Semester Ganjil) kini AKTIF!`);
+            }
+
+            await loadPeriodeSekolah(managingSchoolId);
+            await loadDataSekolah();
+        }
+
+        // Mengaktifkan Semester -> Otomatis menyinkronkan & mengaktifkan Tahun Ajaran induknya
+        async function aktifkanSemester(semesterId, parentYearId, yearName, semesterName) {
+            if (!managingSchoolId) return;
+
+            document.getElementById('periodeStatus').style.color = "var(--primary)";
+            document.getElementById('periodeStatus').innerText = `Mengaktifkan ${yearName} - Semester ${semesterName}...`;
+
+            // 1. Sinkronkan Tahun Ajaran induknya (Nonaktifkan tahun lain, aktifkan parentYearId)
+            const { error: errDeactY } = await supabaseClient
+                .from('academic_years')
+                .update({ is_active: false })
+                .eq('school_id', managingSchoolId)
+                .eq('is_active', true);
+
+            if (errDeactY) {
+                showAutoMessage('periodeStatus', "Gagal sinkronisasi tahun ajaran: " + errDeactY.message, true);
+                return;
+            }
+
+            const { error: errActY } = await supabaseClient
+                .from('academic_years')
+                .update({ is_active: true })
+                .eq('id', parentYearId);
+
+            if (errActY) {
+                showAutoMessage('periodeStatus', "Gagal mengaktifkan tahun induk: " + errActY.message, true);
+                return;
+            }
+
+            // 2. Nonaktifkan semua semester sekolah ini, lalu aktifkan semester target
+            const { error: errDeactS } = await supabaseClient
+                .from('semesters')
+                .update({ is_active: false })
+                .eq('school_id', managingSchoolId)
+                .eq('is_active', true);
+
+            if (errDeactS) {
+                showAutoMessage('periodeStatus', "Gagal menonaktifkan semester sebelumnya: " + errDeactS.message, true);
+                return;
+            }
+
+            const { error: errActS } = await supabaseClient
+                .from('semesters')
+                .update({ is_active: true })
+                .eq('id', semesterId);
+
+            if (errActS) {
+                showAutoMessage('periodeStatus', "Gagal mengaktifkan semester: " + errActS.message, true);
+            } else {
+                showAutoMessage('periodeStatus', `✅ Periode ${yearName} — Semester ${semesterName} kini AKTIF!`);
+            }
+
+            await loadPeriodeSekolah(managingSchoolId);
+            await loadDataSekolah();
+        }
+
+        // ==================== HAPUS TAHUN AJARAN (CEK ISI DATA, PERINGATAN BESAR & HAPUS TUNTAS) ====================
+        async function triggerHapusTahunAjaran(yearId, yearName) {
+            if (!managingSchoolId) return;
+
+            // Pengaman ganda: tolak jika tahun ajaran yang dipilih berstatus aktif
+            const targetYear = managingSchoolYears.find(y => y.id === yearId);
+            if (!targetYear || targetYear.is_active) {
+                showToast("Tahun ajaran yang sedang aktif tidak dapat dihapus!");
+                showAutoMessage('periodeStatus', "Tahun ajaran sedang aktif dan terkunci dari penghapusan.", true);
+                return;
+            }
+
+            const school = allSchools.find(s => s.id === managingSchoolId);
+            const schoolName = school ? school.name : 'Sekolah ini';
+            const delBtn = document.getElementById(`btnDelYear-${yearId}`);
+            if (delBtn) {
+                delBtn.disabled = true;
+                delBtn.innerText = "Cek data... ⏳";
+            }
+
+            document.getElementById('periodeStatus').style.color = "var(--primary)";
+            document.getElementById('periodeStatus').innerText = `Memeriksa rincian data pada Tahun Ajaran ${yearName}...`;
+
+            try {
+                // 1. Hitung jumlah data master (Rombel, Mapel, Guru, Siswa, Penugasan) & ambil daftar semester secara paralel
+                const [resRombel, resMapel, resGuru, resSiswa, resAssign, resSems] = await Promise.all([
+                    supabaseClient.from('rombels').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
+                    supabaseClient.from('mapels').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
+                    supabaseClient.from('gurus').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
+                    supabaseClient.from('students').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
+                    supabaseClient.from('teaching_assignments').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
+                    supabaseClient.from('semesters').select('id, name').eq('school_id', managingSchoolId).eq('academic_year_id', yearId)
+                ]);
+
+                const firstErr = resRombel.error || resMapel.error || resGuru.error || resSiswa.error || resAssign.error || resSems.error;
+                if (firstErr) {
+                    throw new Error(firstErr.message);
+                }
+
+                const semesterIds = (resSems.data || []).map(s => s.id);
+                let cpCount = 0;
+                let gradeCount = 0;
+
+                // 2. Cek juga jumlah data CP & Nilai di bawah semester tahun ajaran tersebut
+                if (semesterIds.length > 0) {
+                    const [resCps, resGrades] = await Promise.all([
+                        supabaseClient.from('cps').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).in('semester_id', semesterIds),
+                        supabaseClient.from('grades').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).in('semester_id', semesterIds)
+                    ]);
+                    if (!resCps.error) cpCount = resCps.count || 0;
+                    if (!resGrades.error) gradeCount = resGrades.count || 0;
+                }
+
+                const rombelCount = resRombel.count || 0;
+                const mapelCount = resMapel.count || 0;
+                const guruCount = resGuru.count || 0;
+                const siswaCount = resSiswa.count || 0;
+                const assignCount = resAssign.count || 0;
+
+                const totalData = rombelCount + mapelCount + guruCount + siswaCount + assignCount + cpCount + gradeCount;
+                const hasData = totalData > 0;
+
+                document.getElementById('periodeStatus').innerText = '';
+                if (delBtn) {
+                    delBtn.disabled = false;
+                    delBtn.innerText = "🗑️ Hapus";
+                }
+
+                // 3. Simpan target penghapusan dan bangun isi modal konfirmasi
+                pendingDeleteYearData = {
+                    schoolId: managingSchoolId,
+                    schoolName,
+                    yearId,
+                    yearName,
+                    semesterIds
+                };
+
+                const alertBlockHtml = hasData
+                    ? `
+                        <div class="danger-alert-box">
+                            <div class="danger-alert-title">
+                                <span style="font-size: 1.35rem;">🚨</span>
+                                <span>PERINGATAN BESAR: DATA SUDAH TERISI!</span>
+                            </div>
+                            <div style="font-size: 0.87rem; line-height: 1.48;">
+                                Tahun Ajaran <b>${yearName}</b> pada <b>${schoolName}</b> sudah memiliki data di database.
+                                Jika Anda melanjutkan, <b>SELURUH data Rombel, Mapel, Guru, Siswa, Penugasan, CP, dan Nilai</b> pada tahun ajaran ini beserta semester Ganjil & Genap akan <b>TERHAPUS PERMANEN</b> dan <b>TIDAK DAPAT DIKEMBALIKAN</b>!
+                            </div>
+                        </div>
+                    `
+                    : `
+                        <div class="safe-info-box">
+                            ℹ️ Tahun Ajaran <b>${yearName}</b> pada <b>${schoolName}</b> saat ini belum memiliki data Rombel, Mapel, Guru, Siswa, CP, maupun Nilai (kosong). Penghapusan akan menghapus Tahun Ajaran beserta Semester Ganjil & Genap secara permanen.
+                        </div>
+                    `;
+
+                const extraDataNote = (cpCount > 0 || gradeCount > 0 || assignCount > 0)
+                    ? `<div style="font-size: 0.8rem; color: var(--danger); font-weight: 700; margin-top: 8px; text-align: left;">
+                           Data terkait lainnya yang ikut terhapus: <b>${assignCount}</b> Penugasan Mengajar, <b>${cpCount}</b> CP, dan <b>${gradeCount}</b> Data Nilai.
+                       </div>`
+                    : '';
+
+                const msgHtml = `
+                    <div style="margin-bottom: 6px;">
+                        Anda akan menghapus permanen <b>Tahun Ajaran ${yearName}</b><br>
+                        <span style="color: var(--text-muted); font-size: 0.86rem;">Sekolah: <b>${schoolName}</b></span>
+                    </div>
+                    ${alertBlockHtml}
+                    <div style="text-align: left; font-size: 0.82rem; font-weight: 700; color: var(--text-muted); margin-top: 8px;">
+                        Ringkasan Data pada Tahun Ajaran ${yearName}:
+                    </div>
+                    <div class="periode-stats-grid">
+                        <div class="periode-stat-item ${rombelCount > 0 ? 'has-data' : ''}">
+                            <span class="periode-stat-label">🏫 Jumlah Rombel</span>
+                            <span class="periode-stat-value">${rombelCount}</span>
+                        </div>
+                        <div class="periode-stat-item ${mapelCount > 0 ? 'has-data' : ''}">
+                            <span class="periode-stat-label">📚 Jumlah Mapel</span>
+                            <span class="periode-stat-value">${mapelCount}</span>
+                        </div>
+                        <div class="periode-stat-item ${guruCount > 0 ? 'has-data' : ''}">
+                            <span class="periode-stat-label">👩‍🏫 Jumlah Guru</span>
+                            <span class="periode-stat-value">${guruCount}</span>
+                        </div>
+                        <div class="periode-stat-item ${siswaCount > 0 ? 'has-data' : ''}">
+                            <span class="periode-stat-label">🎓 Jumlah Siswa</span>
+                            <span class="periode-stat-value">${siswaCount}</span>
+                        </div>
+                    </div>
+                    ${extraDataNote}
+                `;
+
+                openConfirmModal("Hapus Tahun Ajaran", msgHtml, true, executeHapusTahunAjaran, "YAKIN HAPUS");
+            } catch (err) {
+                if (delBtn) {
+                    delBtn.disabled = false;
+                    delBtn.innerText = "🗑️ Hapus";
+                }
+                showAutoMessage('periodeStatus', "Gagal memeriksa isi data tahun ajaran: " + err.message, true);
+                showToast("Gagal memeriksa data tahun ajaran!");
+            }
+        }
+
+        // Eksekusi penghapusan tuntas seluruh data terkait Tahun Ajaran & Semester di Supabase
+        async function executeHapusTahunAjaran() {
+            if (!pendingDeleteYearData) return;
+
+            const { schoolId, yearId, yearName } = pendingDeleteYearData;
+            const btn = document.getElementById('confirmActionBtn');
+            btn.innerHTML = "Menghapus... ⏳";
+            btn.disabled = true;
+
+            try {
+                // 1. Verifikasi ulang langsung ke database bahwa tahun ajaran tidak sedang aktif
+                const { data: freshYear, error: errCheck } = await supabaseClient
+                    .from('academic_years')
+                    .select('id, is_active')
+                    .eq('id', yearId)
+                    .eq('school_id', schoolId)
+                    .maybeSingle();
+
+                if (errCheck) throw new Error("Gagal verifikasi status tahun ajaran: " + errCheck.message);
+                if (!freshYear) throw new Error("Data tahun ajaran sudah tidak ditemukan.");
+                if (freshYear.is_active) throw new Error("Tahun ajaran sedang AKTIF sehingga dibatalkan demi keamanan.");
+
+                // 2. Ambil ulang semua semester milik tahun ajaran ini
+                const { data: semRows, error: errSemList } = await supabaseClient
+                    .from('semesters')
+                    .select('id')
+                    .eq('school_id', schoolId)
+                    .eq('academic_year_id', yearId);
+
+                if (errSemList) throw new Error("Gagal mengambil daftar semester: " + errSemList.message);
+                const semesterIds = (semRows || []).map(s => s.id);
+
+                // 3. Hapus data berurutan dari tabel anak ke tabel induk agar aman dari Foreign Key Constraint
+                if (semesterIds.length > 0) {
+                    const { error: errGrades } = await supabaseClient
+                        .from('grades')
+                        .delete()
+                        .eq('school_id', schoolId)
+                        .in('semester_id', semesterIds);
+                    if (errGrades) throw new Error("Gagal menghapus data nilai (grades): " + errGrades.message);
+
+                    const { error: errCps } = await supabaseClient
+                        .from('cps')
+                        .delete()
+                        .eq('school_id', schoolId)
+                        .in('semester_id', semesterIds);
+                    if (errCps) throw new Error("Gagal menghapus data CP (cps): " + errCps.message);
+                }
+
+                const { error: errAssign } = await supabaseClient
+                    .from('teaching_assignments')
+                    .delete()
+                    .eq('school_id', schoolId)
+                    .eq('academic_year_id', yearId);
+                if (errAssign) throw new Error("Gagal menghapus penugasan mengajar: " + errAssign.message);
+
+                const { error: errStudents } = await supabaseClient
+                    .from('students')
+                    .delete()
+                    .eq('school_id', schoolId)
+                    .eq('academic_year_id', yearId);
+                if (errStudents) throw new Error("Gagal menghapus data siswa: " + errStudents.message);
+
+                const { error: errGurus } = await supabaseClient
+                    .from('gurus')
+                    .delete()
+                    .eq('school_id', schoolId)
+                    .eq('academic_year_id', yearId);
+                if (errGurus) throw new Error("Gagal menghapus data guru: " + errGurus.message);
+
+                const { error: errMapels } = await supabaseClient
+                    .from('mapels')
+                    .delete()
+                    .eq('school_id', schoolId)
+                    .eq('academic_year_id', yearId);
+                if (errMapels) throw new Error("Gagal menghapus data mapel: " + errMapels.message);
+
+                const { error: errRombels } = await supabaseClient
+                    .from('rombels')
+                    .delete()
+                    .eq('school_id', schoolId)
+                    .eq('academic_year_id', yearId);
+                if (errRombels) throw new Error("Gagal menghapus data rombel: " + errRombels.message);
+
+                const { error: errSems } = await supabaseClient
+                    .from('semesters')
+                    .delete()
+                    .eq('school_id', schoolId)
+                    .eq('academic_year_id', yearId);
+                if (errSems) throw new Error("Gagal menghapus data semester: " + errSems.message);
+
+                const { error: errYear } = await supabaseClient
+                    .from('academic_years')
+                    .delete()
+                    .eq('id', yearId)
+                    .eq('school_id', schoolId);
+                if (errYear) throw new Error("Gagal menghapus tahun ajaran: " + errYear.message);
+
+                pendingDeleteYearData = null;
+                closeConfirmModal();
+                showAutoMessage('periodeStatus', `✅ Tahun Ajaran ${yearName} beserta seluruh data terkait berhasil dihapus permanen!`);
+
+                await loadPeriodeSekolah(schoolId);
+                await loadDataSekolah();
+            } catch (err) {
+                btn.innerHTML = "Hapus Permanen";
+                btn.disabled = false;
+                showAutoMessage('periodeStatus', "❌ " + err.message, true);
+                showToast("Gagal menghapus tahun ajaran! " + err.message);
+            }
+        }
+
+        /* ==================== SELEKSI MASSAL & HAPUS MASSAL ==================== */
+        function toggleRowSelect(checkbox, id) {
+            if (checkbox.checked) selectedIds.add(id);
+            else selectedIds.delete(id);
+            checkbox.closest('tr').classList.toggle('selected-row', checkbox.checked);
+            updateActionButtons();
+        }
+
+        function toggleSelectAllPage(headerCheckbox) {
+            const startIdx = (currentPage - 1) * itemsPerPage;
+            const paginated = filteredSchools.slice(startIdx, startIdx + itemsPerPage);
+            
+            paginated.forEach(s => {
+                if(headerCheckbox.checked) selectedIds.add(s.id);
+                else selectedIds.delete(s.id);
+            });
+            renderTableSekolah();
+        }
+
+        function syncCheckAllPageBox(paginated) {
+            const box = document.getElementById('checkAllPage');
+            if (paginated.length === 0) { box.checked = false; return; }
+            box.checked = paginated.every(s => selectedIds.has(s.id));
+        }
+
+        function selectAllVisible() {
+            const startIdx = (currentPage - 1) * itemsPerPage;
+            filteredSchools.slice(startIdx, startIdx + itemsPerPage).forEach(s => selectedIds.add(s.id));
+            renderTableSekolah();
+        }
+
+        function deselectAll() { selectedIds.clear(); renderTableSekolah(); }
+        
+        function invertSelection() {
+            const startIdx = (currentPage - 1) * itemsPerPage;
+            filteredSchools.slice(startIdx, startIdx + itemsPerPage).forEach(s => {
+                if(selectedIds.has(s.id)) selectedIds.delete(s.id);
+                else selectedIds.add(s.id);
+            });
+            renderTableSekolah();
+        }
+
+        function updateActionButtons() {
+            const btn = document.getElementById('btnBulkDelete');
+            document.getElementById('tableCountInfo').innerHTML = `Total: <strong>${filteredSchools.length}</strong> sekolah | Terpilih: <strong>${selectedIds.size}</strong>`;
+            if (selectedIds.size > 0) {
+                btn.disabled = false; btn.innerText = `Hapus (${selectedIds.size})`;
+            } else {
+                btn.disabled = true; btn.innerText = `Hapus`;
+            }
+        }
+
+        function triggerBulkDelete() {
+            if (selectedIds.size === 0) return;
+            const toDelete = allSchools.filter(s => selectedIds.has(s.id));
+            const hasPremium = toDelete.some(s => !s.is_free);
+            
+            const listHtml = toDelete.map(s => `• <b style="color:var(--text-dark);">${s.name}</b> <span style="color:var(--text-muted);">(${s.is_free?'Free':'Premium'})</span>`).join('<br>');
+            
+            let msg = `Anda yakin ingin menghapus permanen <b>${selectedIds.size} sekolah</b> berikut?<br>
+                       <div class="delete-list">${listHtml}</div>
+                       <em style="color:var(--danger);">Peringatan: Semua data periode, guru, siswa, mapel, dan nilai akan hancur total.</em>`;
+            
+            if(hasPremium) {
+                msg = `<div style="background:rgba(220, 38, 38, 0.15); border-left:4px solid var(--danger); padding:8px; margin-bottom:10px;"><span style="color:var(--danger);font-weight:bold;">PERHATIAN: Terdapat sekolah PREMIUM aktif!</span></div>` + msg;
+            }
+            openConfirmModal("Hapus Massal", msg, true, executeBulkDelete);
+        }
+
+        async function executeBulkDelete() {
+            const idsArray = Array.from(selectedIds);
+            document.getElementById('confirmActionBtn').innerHTML = "Hapus... ⏳";
+            document.getElementById('confirmActionBtn').disabled = true;
+            
+            const { error } = await supabaseClient.from('schools').delete().in('id', idsArray);
+            if (error) {
+                alert("Gagal menghapus: " + error.message);
+                document.getElementById('confirmActionBtn').innerHTML = "Hapus";
+                document.getElementById('confirmActionBtn').disabled = false;
+            } else { 
+                selectedIds.clear(); 
+                loadDataSekolah(); 
+                closeConfirmModal();
+            }
+        }
+
+        /* ==================== MANAJEMEN FORM REGISTRASI & EDIT SEKOLAH ==================== */
+        // Pastikan input Jml Rombel beserta tombol - / + selalu aktif baik untuk tipe Free maupun Premium
+        function toggleRombelLock() {
+            const input = document.getElementById('maxRombel');
+            const btnMin = document.getElementById('btnRombelMin');
+            const btnPlus = document.getElementById('btnRombelPlus');
+
+            if (input) {
+                input.readOnly = false;
+                if (!input.value || isNaN(parseInt(input.value, 10)) || parseInt(input.value, 10) < 1) {
+                    input.value = 1;
+                }
+            }
+            if (btnMin) btnMin.disabled = false;
+            if (btnPlus) btnPlus.disabled = false;
+        }
+
+        // Acak Kode Akses (6 huruf kapital unik) & Token Admin (4 digit angka)
+        function generateCode() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const editId = document.getElementById('editSchoolId')?.value || '';
+            let code = '';
+            let attempts = 0;
+
+            do {
+                code = '';
+                for (let i = 0; i < 6; i++) {
+                    code += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                attempts++;
+            } while (isDuplicateAccessCode(code, editId) && attempts < 30);
+
+            const token = Math.floor(1000 + Math.random() * 9000).toString();
+
+            const accessCodeInput = document.getElementById('accessCode');
+            const adminTokenInput = document.getElementById('adminToken');
+
+            if (accessCodeInput) {
+                accessCodeInput.value = code;
+                handleAccessCodeInput(accessCodeInput);
+            }
+            if (adminTokenInput) {
+                adminTokenInput.value = token;
+                adminTokenInput.classList.remove('input-error');
+            }
+        }
+
+        function triggerSimpanSekolah() {
+            const schoolNameInput = document.getElementById('schoolName');
+            const accessCodeInput = document.getElementById('accessCode');
+            const adminTokenInput = document.getElementById('adminToken');
+
+            const nama = schoolNameInput.value.trim().replace(/\s+/g, ' ').toUpperCase();
+            schoolNameInput.value = nama;
+
+            const tingkat = document.getElementById('schoolTingkat').value;
+            const isFree = document.getElementById('isFree').value === 'true';
+            const maxRombel = parseInt(document.getElementById('maxRombel').value, 10);
+            const accessCode = accessCodeInput.value.trim().toUpperCase();
+            accessCodeInput.value = accessCode;
+            const adminToken = adminTokenInput.value.trim();
+            adminTokenInput.value = adminToken;
+            const activeMonths = parseInt(document.getElementById('activeMonths').value, 10);
+            const editId = document.getElementById('editSchoolId').value;
+            const initialYear = document.getElementById('initialAcademicYear').value.trim();
+
+            if (!nama) {
+                showAutoMessage('formStatus', "Nama sekolah wajib diisi!", true);
+                schoolNameInput.focus();
+                return;
+            }
+
+            // Validasi Nama Sekolah Duplikat
+            if (isDuplicateSchoolName(nama, editId)) {
+                schoolNameInput.classList.add('input-error');
+                document.getElementById('schoolDuplicateHint').classList.remove('hidden');
+                showAutoMessage('formStatus', "Nama sekolah sudah dipakai! Silakan gunakan nama lain.", true);
+                showToast("Nama sekolah sudah dipakai! Tidak bisa mendaftarkan nama yang sama.");
+                schoolNameInput.focus();
+                return;
+            }
+
+            // Validasi Tahun Ajaran Awal saat registrasi sekolah baru
+            if (!editId) {
+                if (!isValidAcademicYearFormat(initialYear)) {
+                    showAutoMessage('formStatus', "Tahun Awal wajib berformat YYYY/YYYY berurutan (contoh: 2026/2027)!", true);
+                    showToast("Format Tahun Awal salah! Contoh: 2026/2027");
+                    document.getElementById('initialAcademicYear').focus();
+                    return;
+                }
+            }
+
+            if (isNaN(maxRombel) || maxRombel < 1) {
+                showAutoMessage('formStatus', "Jumlah rombel wajib berupa angka minimal 1!", true);
+                showToast("Jumlah rombel wajib diisi angka!");
+                document.getElementById('maxRombel').focus();
+                return;
+            }
+
+            if (isNaN(activeMonths) || activeMonths < 1) {
+                showAutoMessage('formStatus', "Masa aktif (bulan) wajib berupa angka minimal 1!", true);
+                showToast("Masa aktif wajib diisi angka!");
+                document.getElementById('activeMonths').focus();
+                return;
+            }
+
+            // Validasi Token Admin wajib angka tepat 4 digit
+            if (!/^\d{4}$/.test(adminToken)) {
+                adminTokenInput.classList.add('input-error');
+                showAutoMessage('formStatus', "Token Admin wajib berupa angka tepat 4 digit!", true);
+                showToast("Token Admin harus tepat 4 digit angka!");
+                adminTokenInput.focus();
+                return;
+            }
+            adminTokenInput.classList.remove('input-error');
+
+            // Validasi Kode Akses wajib tepat 6 huruf kapital (A-Z)
+            if (!/^[A-Z]{6}$/.test(accessCode)) {
+                accessCodeInput.classList.add('input-error');
+                showAutoMessage('formStatus', "Kode Akses wajib tepat 6 huruf kapital (A-Z)!", true);
+                showToast("Kode Akses wajib tepat 6 huruf kapital (A-Z)!");
+                accessCodeInput.focus();
+                return;
+            }
+
+            // Validasi Kode Akses tidak boleh sama dengan sekolah lain
+            if (isDuplicateAccessCode(accessCode, editId)) {
+                accessCodeInput.classList.add('input-error');
+                document.getElementById('codeDuplicateHint').classList.remove('hidden');
+                showAutoMessage('formStatus', "Kode akses sudah dipakai sekolah lain! Silakan ganti atau klik Acak.", true);
+                showToast("Kode akses sudah dipakai sekolah lain!");
+                accessCodeInput.focus();
+                return;
+            }
+            accessCodeInput.classList.remove('input-error');
+            document.getElementById('codeDuplicateHint').classList.add('hidden');
+
+            const now = new Date(); now.setMonth(now.getMonth() + activeMonths);
+            const expDate = now.toISOString().split('T')[0];
+
+            pendingSaveData = { editId, nama, tingkat, isFree, maxRombel, accessCode, expDate, adminToken, initialYear };
+            
+            const actionTxt = editId ? "memperbarui data" : "mendaftarkan sekolah baru";
+            const periodeRowHtml = !editId
+                ? `<tr><td style="padding:3px; border:none;"><b>Periode Awal:</b></td><td style="padding:3px; border:none; color:var(--success); font-weight:bold;">${initialYear} (Ganjil Aktif & Genap)</td></tr>`
+                : '';
+
+            const msg = `Apakah Anda yakin ingin ${actionTxt}:<br><br>
+                         <div style="background:var(--input-bg); padding:10px; border-radius:8px; border:1px solid var(--border-color); text-align:left;">
+                            <table style="width:100%; border:none; background:transparent;">
+                                <tr><td style="padding:3px; border:none; width:38%;"><b>Nama:</b></td><td style="padding:3px; border:none;">${nama}</td></tr>
+                                <tr><td style="padding:3px; border:none;"><b>Jenjang:</b></td><td style="padding:3px; border:none;">${tingkat}</td></tr>
+                                ${periodeRowHtml}
+                                <tr><td style="padding:3px; border:none;"><b>Kode / Token:</b></td><td style="padding:3px; border:none;"><span class="badge-code">${accessCode}</span> / <span class="badge-token">${adminToken}</span></td></tr>
+                                <tr><td style="padding:3px; border:none;"><b>Tipe:</b></td><td style="padding:3px; border:none;">${isFree ? `<span class="badge badge-free">Free (${maxRombel} Rombel)</span>` : `<span class="badge badge-premium">Premium (${maxRombel} Rombel)</span>`}</td></tr>
+                                <tr><td style="padding:3px; border:none;"><b>Aktif Hingga:</b></td><td style="padding:3px; border:none; color:var(--danger); font-weight:bold;">${expDate}</td></tr>
+                            </table>
+                         </div>`;
+            
+            openConfirmModal("Konfirmasi Simpan", msg, false, executeSimpanSekolah);
+        }
+
+        async function executeSimpanSekolah() {
+            const btn = document.getElementById('confirmActionBtn');
+            btn.innerHTML = "Simpan... ⏳";
+            btn.disabled = true;
+            
+            const { editId, nama, tingkat, isFree, maxRombel, accessCode, expDate, adminToken, initialYear } = pendingSaveData;
+
+            // Cek ulang duplikat Nama Sekolah & Kode Akses ke database Supabase sebelum insert/update
+            let dupNameQuery = supabaseClient.from('schools').select('id').ilike('name', nama);
+            let dupCodeQuery = supabaseClient.from('schools').select('id').ilike('access_code', accessCode);
+            if (editId) {
+                dupNameQuery = dupNameQuery.neq('id', editId);
+                dupCodeQuery = dupCodeQuery.neq('id', editId);
+            }
+
+            const [resDupName, resDupCode] = await Promise.all([dupNameQuery, dupCodeQuery]);
+
+            if (resDupName.data && resDupName.data.length > 0) {
+                closeConfirmModal();
+                document.getElementById('schoolName').classList.add('input-error');
+                document.getElementById('schoolDuplicateHint').classList.remove('hidden');
+                showAutoMessage('formStatus', "Nama sekolah sudah dipakai di database!", true);
+                showToast("Nama sekolah sudah dipakai!");
+                return;
+            }
+
+            if (resDupCode.data && resDupCode.data.length > 0) {
+                closeConfirmModal();
+                document.getElementById('accessCode').classList.add('input-error');
+                document.getElementById('codeDuplicateHint').classList.remove('hidden');
+                showAutoMessage('formStatus', "Kode akses sudah dipakai sekolah lain di database!", true);
+                showToast("Kode akses sudah dipakai sekolah lain!");
+                return;
+            }
+
+            let error;
+            if (editId) {
+                // Sertakan access_code agar perubahan manual / acak pada mode Edit ikut tersimpan
+                const res = await supabaseClient.from('schools')
+                    .update({
+                        name: nama,
+                        tingkat: tingkat,
+                        access_code: accessCode,
+                        is_free: isFree,
+                        max_rombel: maxRombel,
+                        exp_date: expDate,
+                        admin_token: adminToken
+                    })
+                    .eq('id', editId);
+                error = res.error;
+            } else {
+                const res = await supabaseClient.from('schools')
+                    .insert([{
+                        name: nama,
+                        tingkat: tingkat,
+                        access_code: accessCode,
+                        is_free: isFree,
+                        max_rombel: maxRombel,
+                        exp_date: expDate,
+                        admin_token: adminToken
+                    }]).select();
+                error = res.error;
+                
+                if (!error && res.data && res.data.length > 0) {
+                    const newSchoolId = res.data[0].id;
+
+                    // 1. Buat konfigurasi nilai default
+                    await supabaseClient.from('grading_configs').insert([{ school_id: newSchoolId, scale_type: 'puluhan', decimal_places: 0 }]);
+
+                    // 2. Buat Tahun Ajaran awal (aktif) & otomatis buat Semester Ganjil (aktif) + Genap (non-aktif)
+                    const { data: createdYear, error: errYear } = await supabaseClient
+                        .from('academic_years')
+                        .insert([{ school_id: newSchoolId, name: initialYear, is_active: true }])
+                        .select()
+                        .single();
+
+                    if (!errYear && createdYear) {
+                        await supabaseClient.from('semesters').insert([
+                            { school_id: newSchoolId, academic_year_id: createdYear.id, name: 'Ganjil', is_active: true },
+                            { school_id: newSchoolId, academic_year_id: createdYear.id, name: 'Genap', is_active: false }
+                        ]);
+                    }
+                }
+            }
+
+            closeConfirmModal();
+
+            if (error) { 
+                showAutoMessage('formStatus', "Gagal menyimpan: " + error.message, true);
+            } else {
+                showAutoMessage('formStatus', editId ? "✅ Data berhasil diperbarui!" : "✅ Sekolah baru & periode awal berhasil didaftarkan!");
+                resetFormSekolah(); 
+                loadDataSekolah();
+            }
+        }
+
+        function editSekolah(id) {
+            const s = allSchools.find(i => i.id === id); if(!s) return;
+            document.getElementById('editSchoolId').value = s.id;
+
+            const schoolNameInput = document.getElementById('schoolName');
+            const accessCodeInput = document.getElementById('accessCode');
+            const adminTokenInput = document.getElementById('adminToken');
+
+            schoolNameInput.value = s.name.toUpperCase();
+            schoolNameInput.classList.remove('input-error');
+            accessCodeInput.classList.remove('input-error');
+            if (adminTokenInput) adminTokenInput.classList.remove('input-error');
+            document.getElementById('schoolDuplicateHint').classList.add('hidden');
+            document.getElementById('codeDuplicateHint').classList.add('hidden');
+            document.getElementById('btnSaveSchool').disabled = false;
+
+            document.getElementById('schoolTingkat').value = s.tingkat;
+            document.getElementById('isFree').value = s.is_free ? "true" : "false";
+            document.getElementById('maxRombel').value = s.max_rombel;
+            accessCodeInput.value = (s.access_code || '').toUpperCase();
+            if (adminTokenInput) adminTokenInput.value = s.admin_token || '0000';
+            
+            // Sembunyikan input Tahun Awal saat mode Edit (karena periode dikelola lewat tombol Periode)
+            document.getElementById('initialYearGroup').classList.add('hidden');
+
+            toggleRombelLock();
+            updateSaveSchoolButtonState();
+            
+            document.getElementById('formSchoolTitle').innerHTML = "✏️ Edit Data Sekolah";
+            document.getElementById('btnSaveSchool').innerHTML = "Update";
+            document.getElementById('btnCancelEdit').classList.remove('hidden');
+            
+            window.scrollTo({ top: 0 });
+            
+            const formCard = document.getElementById('devFormCard');
+            formCard.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.45)';
+            setTimeout(() => { formCard.style.boxShadow = ''; }, 800);
+            schoolNameInput.focus();
+        }
+
+        function resetFormSekolah() {
+            document.getElementById('editSchoolId').value = '';
+            const schoolNameInput = document.getElementById('schoolName');
+            const accessCodeInput = document.getElementById('accessCode');
+            const adminTokenInput = document.getElementById('adminToken');
+
+            schoolNameInput.value = '';
+            schoolNameInput.classList.remove('input-error');
+            if (accessCodeInput) accessCodeInput.classList.remove('input-error');
+            if (adminTokenInput) adminTokenInput.classList.remove('input-error');
+            document.getElementById('schoolDuplicateHint').classList.add('hidden');
+            document.getElementById('codeDuplicateHint').classList.add('hidden');
+            document.getElementById('btnSaveSchool').disabled = false;
+
+            document.getElementById('initialYearGroup').classList.remove('hidden');
+            document.getElementById('initialAcademicYear').value = '2026/2027';
+            document.getElementById('isFree').value = 'true';
+            document.getElementById('maxRombel').value = '1';
+            document.getElementById('activeMonths').value = '12';
+            
+            toggleRombelLock(); 
+            generateCode();
+            
+            document.getElementById('formSchoolTitle').innerHTML = "✨ Registrasi Sekolah Baru";
+            document.getElementById('btnSaveSchool').innerHTML = "Simpan";
+            document.getElementById('btnCancelEdit').classList.add('hidden');
+            document.getElementById('formStatus').innerText = '';
+        }
+
+        /* ==================== LOGIKA POPUP REGISTER, VALIDASI, MEMORI SESI & QR WHATSAPP ==================== */
+        const REG_SESSION_KEY = 'np_register_draft_v1';
+        const REG_WA_NUMBER = '6285214596325';
+        let regQrDebounceTimer = null;
+
+        // Membangun URL WhatsApp (wa.me) otomatis sesuai format pendaftaran yang diminta
+        function buildRegisterWaUrl() {
+            const namaSekolah = (document.getElementById('regSchoolName')?.value || '').trim().replace(/\s+/g, ' ').toUpperCase();
+            const tingkat = (document.getElementById('regSchoolLevel')?.value || '').trim();
+            const jumlahRombel = (document.getElementById('regRombelCount')?.value || '').trim();
+            const namaPemesan = (document.getElementById('regOrdererName')?.value || '').trim().replace(/\s+/g, ' ').toUpperCase();
+
+            const messageText =
+                `Pendaftaran Aplikasi Nilai Pro\n` +
+                `Nama Sekolah = ${namaSekolah}\n` +
+                `Tingkat = ${tingkat}\n` +
+                `Jumlah Rombel = ${jumlahRombel}\n` +
+                `Nama Pemesan = ${namaPemesan}`;
+
+            return `https://wa.me/${REG_WA_NUMBER}?text=${encodeURIComponent(messageText)}`;
+        }
+
+        // Merender QR Code besar & jelas secara real-time mengikuti isian form
+        function updateRegisterQrCode() {
+            const container = document.getElementById('regQrContainer');
+            if (!container) return;
+
+            const waUrl = buildRegisterWaUrl();
+            container.innerHTML = '';
+
+            if (typeof QRCode !== 'undefined') {
+                try {
+                    new QRCode(container, {
+                        text: waUrl,
+                        width: 210,
+                        height: 210,
+                        colorDark: '#000000',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                    // Pastikan hanya 1 QR Code yang tampil (qrcodejs membuat canvas + img sekaligus)
+                    const qrCanvas = container.querySelector('canvas');
+                    const qrImg = container.querySelector('img');
+                    if (qrCanvas && qrImg) {
+                        qrCanvas.style.display = 'none';
+                        qrImg.style.display = 'block';
+                    }
+                    return;
+                } catch (err) {
+                    container.innerHTML = '';
+                }
+            }
+
+            // Fallback otomatis jika library CDN QRCode gagal dimuat
+            const fallbackImg = document.createElement('img');
+            fallbackImg.alt = 'QR Code Pendaftaran Aplikasi Nilai Pro';
+            fallbackImg.width = 210;
+            fallbackImg.height = 210;
+            fallbackImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=6&ecc=M&data=${encodeURIComponent(waUrl)}`;
+            container.appendChild(fallbackImg);
+        }
+
+        // Debounce ringan saat mengetik agar update QR terasa mulus tanpa lag
+        function scheduleQrUpdate() {
+            if (regQrDebounceTimer) clearTimeout(regQrDebounceTimer);
+            regQrDebounceTimer = setTimeout(updateRegisterQrCode, 120);
+        }
+
+        // Simpan isian form ke sesi browser (sessionStorage) agar tidak hilang saat popup ditutup
+        function saveRegisterDraftToSession() {
+            const draft = {
+                schoolName: document.getElementById('regSchoolName')?.value || '',
+                schoolLevel: document.getElementById('regSchoolLevel')?.value || '',
+                rombelCount: document.getElementById('regRombelCount')?.value || '',
+                ordererName: document.getElementById('regOrdererName')?.value || ''
+            };
+            sessionStorage.setItem(REG_SESSION_KEY, JSON.stringify(draft));
+        }
+
+        // Muat kembali isian form dari sesi browser saat popup dibuka kembali
+        function restoreRegisterDraftFromSession() {
+            try {
+                const raw = sessionStorage.getItem(REG_SESSION_KEY);
+                if (!raw) return;
+                const draft = JSON.parse(raw);
+
+                const schoolEl = document.getElementById('regSchoolName');
+                const levelEl = document.getElementById('regSchoolLevel');
+                const rombelEl = document.getElementById('regRombelCount');
+                const ordererEl = document.getElementById('regOrdererName');
+
+                if (schoolEl && typeof draft.schoolName === 'string') schoolEl.value = draft.schoolName.toUpperCase();
+                if (levelEl && typeof draft.schoolLevel === 'string') levelEl.value = draft.schoolLevel;
+                if (rombelEl && typeof draft.rombelCount === 'string') rombelEl.value = draft.rombelCount;
+                if (ordererEl && typeof draft.ordererName === 'string') ordererEl.value = draft.ordererName.toUpperCase();
+            } catch (e) {
+                // Abaikan jika data sesi tidak valid
+            }
+        }
+
+        // Validasi otomatis huruf kapital untuk Nama Sekolah (min 5) & Nama Pemesan (min 3)
+        function handleRegUppercaseInput(inputEl, minLen, hintId) {
+            const start = inputEl.selectionStart;
+            const end = inputEl.selectionEnd;
+            inputEl.value = inputEl.value.toUpperCase();
+            if (start !== null && end !== null) {
+                inputEl.setSelectionRange(start, end);
+            }
+
+            const trimmedLen = inputEl.value.trim().length;
+            const hintEl = document.getElementById(hintId);
+            if (trimmedLen >= minLen || trimmedLen === 0) {
+                inputEl.classList.remove('input-error');
+                if (hintEl) hintEl.classList.remove('error-text');
+            }
+
+            saveRegisterDraftToSession();
+            scheduleQrUpdate();
+        }
+
+        // Handler perubahan dropdown Tingkat sekolah
+        function handleRegLevelChange(selectEl) {
+            if (selectEl.value) {
+                selectEl.classList.remove('input-error');
+            }
+            saveRegisterDraftToSession();
+            updateRegisterQrCode();
+        }
+
+        // Validasi ketat Jumlah Rombel: hanya angka bulat 1 sampai 100
+        function handleRegRombelInput(inputEl) {
+            const rawVal = inputEl.value;
+            const digitsOnly = rawVal.replace(/[^0-9]/g, '');
+
+            if (rawVal !== digitsOnly) {
+                inputEl.value = digitsOnly;
+                showToast('Input ditolak! Jumlah Rombel hanya boleh angka bulat (1 - 100).');
+            }
+
+            const wrapper = document.getElementById('regRombelWrapper');
+            const hintEl = document.getElementById('regRombelHint');
+
+            if (digitsOnly !== '') {
+                const parsed = parseInt(digitsOnly, 10);
+                if (parsed > 100) {
+                    inputEl.value = '100';
+                    showToast('Jumlah Rombel maksimal adalah 100!');
+                } else if (parsed < 1) {
+                    inputEl.value = '1';
+                    showToast('Jumlah Rombel minimal adalah 1!');
+                } else {
+                    inputEl.value = String(parsed);
+                }
+                if (wrapper) wrapper.classList.remove('input-error');
+                if (hintEl) hintEl.classList.remove('error-text');
+            }
+
+            saveRegisterDraftToSession();
+            scheduleQrUpdate();
+        }
+
+        // Tombol minus / plus Jumlah Rombel (min 1 max 100)
+        function adjustRegRombel(delta) {
+            const inputEl = document.getElementById('regRombelCount');
+            const wrapper = document.getElementById('regRombelWrapper');
+            const hintEl = document.getElementById('regRombelHint');
+            if (!inputEl) return;
+
+            let val = parseInt(inputEl.value, 10);
+            if (isNaN(val)) {
+                val = 1;
+            } else {
+                val += delta;
+            }
+
+            if (val < 1) val = 1;
+            if (val > 100) val = 100;
+
+            inputEl.value = String(val);
+            if (wrapper) wrapper.classList.remove('input-error');
+            if (hintEl) hintEl.classList.remove('error-text');
+
+            saveRegisterDraftToSession();
+            updateRegisterQrCode();
+        }
+
+        // Buka Popup Register (menempel di pojok kanan bawah)
+        function openRegisterPopup(event) {
+            if (event) event.stopPropagation();
+
+            restoreRegisterDraftFromSession();
+            updateRegisterQrCode();
+
+            document.getElementById('btnRegisterToggle').classList.add('hidden');
+            document.getElementById('registerPopupCard').classList.remove('hidden');
+
+            setTimeout(() => {
+                const firstEmpty = ['regSchoolName', 'regSchoolLevel', 'regRombelCount', 'regOrdererName']
+                    .map(id => document.getElementById(id))
+                    .find(el => el && !el.value.trim());
+                (firstEmpty || document.getElementById('regSchoolName'))?.focus();
+            }, 60);
+        }
+
+        // Tutup Popup Register kembali menjadi tombol Register (isian tetap tersimpan di sesi)
+        function closeRegisterPopup() {
+            const popup = document.getElementById('registerPopupCard');
+            const btn = document.getElementById('btnRegisterToggle');
+            if (popup) popup.classList.add('hidden');
+            if (btn && !document.body.classList.contains('dashboard-mode')) {
+                btn.classList.remove('hidden');
+            }
+        }
+
+        // Validasi akhir & kirim otomatis ke WhatsApp (wa.me/6285214596325)
+        function submitRegisterWhatsApp() {
+            const schoolEl = document.getElementById('regSchoolName');
+            const levelEl = document.getElementById('regSchoolLevel');
+            const rombelEl = document.getElementById('regRombelCount');
+            const rombelWrap = document.getElementById('regRombelWrapper');
+            const ordererEl = document.getElementById('regOrdererName');
+
+            const schoolHint = document.getElementById('regSchoolHint');
+            const rombelHint = document.getElementById('regRombelHint');
+            const ordererHint = document.getElementById('regOrdererHint');
+
+            // Normalisasi huruf kapital
+            const namaSekolah = schoolEl.value.trim().replace(/\s+/g, ' ').toUpperCase();
+            schoolEl.value = namaSekolah;
+            const tingkat = levelEl.value.trim();
+            const rombelStr = rombelEl.value.trim();
+            const jumlahRombel = parseInt(rombelStr, 10);
+            const namaPemesan = ordererEl.value.trim().replace(/\s+/g, ' ').toUpperCase();
+            ordererEl.value = namaPemesan;
+
+            // 1. Validasi Nama Sekolah minimal 5 karakter
+            if (namaSekolah.length < 5) {
+                schoolEl.classList.add('input-error');
+                if (schoolHint) schoolHint.classList.add('error-text');
+                showToast('Nama Sekolah wajib diisi minimal 5 karakter!');
+                schoolEl.focus();
+                return;
+            }
+
+            // 2. Validasi Dropdown Tingkat
+            if (!['SD/MI', 'SMP/MTs', 'SMA/SMK/MA'].includes(tingkat)) {
+                levelEl.classList.add('input-error');
+                showToast('Pilih Tingkat sekolah (SD/MI, SMP/MTs, atau SMA/SMK/MA)!');
+                levelEl.focus();
+                return;
+            }
+
+            // 3. Validasi Jumlah Rombel angka bulat min 1 max 100
+            if (!/^\d+$/.test(rombelStr) || isNaN(jumlahRombel) || jumlahRombel < 1 || jumlahRombel > 100) {
+                if (rombelWrap) rombelWrap.classList.add('input-error');
+                if (rombelHint) rombelHint.classList.add('error-text');
+                showToast('Jumlah Rombel wajib angka bulat minimal 1 dan maksimal 100!');
+                rombelEl.focus();
+                return;
+            }
+
+            // 4. Validasi Nama Pemesan minimal 3 karakter
+            if (namaPemesan.length < 3) {
+                ordererEl.classList.add('input-error');
+                if (ordererHint) ordererHint.classList.add('error-text');
+                showToast('Nama Pemesan wajib diisi minimal 3 karakter!');
+                ordererEl.focus();
+                return;
+            }
+
+            // Perbarui QR terakhir dan bangun link wa.me
+            updateRegisterQrCode();
+            const waUrl = buildRegisterWaUrl();
+
+            // Hapus memori sesi setelah klik Kirim yang valid
+            sessionStorage.removeItem(REG_SESSION_KEY);
+            schoolEl.value = '';
+            levelEl.value = '';
+            rombelEl.value = '';
+            ordererEl.value = '';
+            updateRegisterQrCode();
+            closeRegisterPopup();
+
+            // Buka link WhatsApp di tab baru (fallback ke lokasi saat ini jika diblokir popup blocker)
+            const waWindow = window.open(waUrl, '_blank', 'noopener,noreferrer');
+            if (!waWindow) {
+                window.location.href = waUrl;
+            }
+        }
+
+        // Klik di luar popup register -> sembunyikan form menjadi tombol Register saja (draft tetap tersimpan di sesi)
+        document.addEventListener('click', function(event) {
+            const popup = document.getElementById('registerPopupCard');
+            const toggleBtn = document.getElementById('btnRegisterToggle');
+            if (!popup || popup.classList.contains('hidden')) return;
+
+            if (!popup.contains(event.target) && (!toggleBtn || !toggleBtn.contains(event.target))) {
+                closeRegisterPopup();
+            }
+        });
+
+        // Tombol ESC juga menutup popup register dengan aman
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeRegisterPopup();
+            }
+        });
+
+        /* ==================== INISIALISASI HALAMAN ==================== */
+        resetUI();
+        cekSesi();
+        restoreRegisterDraftFromSession();
+        updateRegisterQrCode();
+    </script>
+</body>
+</html>
