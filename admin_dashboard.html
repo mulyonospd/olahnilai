@@ -1260,7 +1260,11 @@ input[type="number"] {
 
     <script>
         // ==================== INISIALISASI SUPABASE & STATE GLOBAL ====================
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // KETERANGAN: Instance `supabaseClient` (dengan header RLS x-school-id, x-user-role, x-user-token) sudah diinisialisasi oleh config.js.
+        // Pengaman fallback berikut mencegah error apabila config.js belum membuat instance, tanpa deklarasi const ganda.
+        if (typeof supabaseClient === 'undefined' && typeof supabase !== 'undefined' && typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined') {
+            window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
         let currentSchoolAdmin = null;
         let globalVarData = null;
 
@@ -1383,27 +1387,37 @@ input[type="number"] {
         }
 
         // ==================== DASHBOARD INIT, PENGAMAN SESI & LOGOUT ====================
+        let isDashboardInitialized = false;
+
+        function clearAdminSessionsAndRedirect() {
+            sessionStorage.removeItem('adminSchoolData');
+            localStorage.removeItem('nilai_pro_session');
+            window.location.href = 'login.html';
+        }
+
         function initDashboard() {
+            if (isDashboardInitialized) return;
+
             const sessionData = sessionStorage.getItem('adminSchoolData');
             if (!sessionData) {
-                window.location.href = 'login.html';
+                clearAdminSessionsAndRedirect();
                 return;
             }
 
             try {
                 currentSchoolAdmin = JSON.parse(sessionData);
             } catch (err) {
-                sessionStorage.removeItem('adminSchoolData');
-                window.location.href = 'login.html';
+                clearAdminSessionsAndRedirect();
                 return;
             }
 
             // KETERANGAN: Pengaman Sesi - pastikan academic_year_id & semester_id tersedia di sessionStorage
             if (!currentSchoolAdmin || !currentSchoolAdmin.id || !currentSchoolAdmin.academic_year_id || !currentSchoolAdmin.semester_id) {
-                sessionStorage.removeItem('adminSchoolData');
-                window.location.href = 'login.html';
+                clearAdminSessionsAndRedirect();
                 return;
             }
+
+            isDashboardInitialized = true;
 
             // KETERANGAN: Ambil informasi periode aktif dari sessionStorage
             currentAcademicYearId = currentSchoolAdmin.academic_year_id;
@@ -1464,7 +1478,7 @@ input[type="number"] {
         
         function confirmLogout() {
             openConfirmModal("Logout", "Yakin ingin keluar dari dashboard?", false, () => {
-                sessionStorage.removeItem('adminSchoolData'); window.location.href = 'login.html';
+                clearAdminSessionsAndRedirect();
             });
         }
 
@@ -4051,6 +4065,8 @@ input[type="number"] {
             reader.readAsArrayBuffer(file);
         }
 
+        // KETERANGAN: Jalankan initDashboard saat DOM siap maupun window.onload sebagai cadangan
+        document.addEventListener('DOMContentLoaded', initDashboard);
         window.onload = initDashboard;
     </script>
 </body>
