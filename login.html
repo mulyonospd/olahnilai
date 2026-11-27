@@ -2583,7 +2583,30 @@
                 const [resRombel, resMapel, resGuru, resSiswa, resAssign, resSems] = await Promise.all([
                     supabaseClient.from('rombels').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
                     supabaseClient.from('mapels').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
-                    supabaseClient.from('gurus').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
+                    
+                   // supabaseClient.from('gurus').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
+                    const { data: loginRes, error } = await supabaseClient.rpc('verify_school_login', {
+  p_school_id: currentSchool.id, // sesuaikan dengan nama variabel sekolah di login.html Anda
+  p_role: 'guru',
+  p_secret: inputKodeGuru // sesuaikan dengan variabel input kode guru Anda
+});
+
+if (error || !loginRes || !loginRes.success) {
+  alert(loginRes?.message || 'Kode Guru tidak ditemukan!');
+  return;
+}
+
+// Data guru sekarang ada di loginRes.guru
+const guru = loginRes.guru;
+
+// Simpan sesi ke localStorage (pastikan menyimpan token & role untuk header RLS)
+localStorage.setItem('nilai_pro_session', JSON.stringify({
+  school_id: currentSchool.id,
+  role: 'guru',
+  token: inputKodeGuru.trim().toUpperCase(),
+  guru: guru
+}));
+                    
                     supabaseClient.from('students').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
                     supabaseClient.from('teaching_assignments').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
                     supabaseClient.from('semesters').select('id, name').eq('school_id', managingSchoolId).eq('academic_year_id', yearId)
