@@ -724,11 +724,52 @@
         .rank-3 { background: rgba(217, 119, 6, 0.24); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.5); }
         .rank-other { color: var(--text-muted); font-weight: 700; }
 
+        /* Gaya Kolom Deskripsi Raport Otomatis (Light & Dark Mode, Responsif) */
         .desc-placeholder {
             min-width: 170px;
             color: var(--text-muted);
             font-size: 0.76rem;
             font-style: italic;
+        }
+
+        .desc-cell {
+            min-width: 240px;
+            max-width: 340px;
+            text-align: left !important;
+            vertical-align: middle;
+            padding: 6px 10px !important;
+            white-space: normal !important;
+            word-break: break-word;
+            line-height: 1.45;
+        }
+
+        .desc-text {
+            color: var(--text-main);
+            font-size: 0.77rem;
+            font-weight: 500;
+            line-height: 1.45;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .desc-empty {
+            color: var(--text-muted);
+            font-size: 0.74rem;
+            font-style: italic;
+            opacity: 0.85;
+        }
+
+        @media (max-width: 768px) {
+            .desc-cell {
+                min-width: 200px;
+                max-width: 260px;
+                padding: 5px 8px !important;
+            }
+            .desc-text {
+                font-size: 0.73rem;
+            }
         }
 
         /* Baris Footer: Jumlah Nilai & Rata-rata */
@@ -1451,7 +1492,7 @@
         scoresByStudent: {},
 
         // Hasil kalkulasi per student_id:
-        // { [studentId]: { hasNilaiAsli, nilaiAsli, nilaiKatrol, nilaiJadi, rank } }
+        // { [studentId]: { hasNilaiAsli, nilaiAsli, nilaiKatrol, nilaiJadi, rank, deskripsi } }
         calcByStudent: {},
 
         // Status perubahan, finalisasi kelas aktif & modal konfirmasi navigasi
@@ -2238,32 +2279,120 @@
     }
 
     // =========================================================================
-    // 7. PERHITUNGAN NILAI ASLI, PENGKATROLAN KETAT, NILAI JADI & PERINGKAT
+    // 7A. AUTO-GENERATE DESKRIPSI RAPORT OTOMATIS (KHUSUS NILAI UH / TP)
+    //     - Hanya mengevaluasi nilai UH per TP/CP yang sudah terisi.
+    //     - Secara ketat MENGABAIKAN nilai PSTS, PSAS, dan Nilai Tambahan.
+    //     - Logika 100% selaras dengan ekspor rekap di halaman Dashboard Guru.
+    // =========================================================================
+    function lowerCaseFirstChar(str) {
+        const trimmed = String(str || '').trim().replace(/\.$/, '');
+        if (!trimmed) return '';
+        return trimmed.charAt(0).toLowerCase() + trimmed.slice(1);
+    }
+
+    function generateRaportDescription(scoredTpList, kkm, scaleMax = 100) {
+        if (!scoredTpList || scoredTpList.length === 0) return '';
+
+        const validWithDesc = scoredTpList.filter(item =>
+            item && Number.isFinite(Number(item.score)) && item.description && item.description.trim().length > 0
+        );
+        if (validWithDesc.length === 0) return '';
+
+        const safeScale = (Number.isFinite(Number(scaleMax)) && Number(scaleMax) > 0) ? Number(scaleMax) : 100;
+        const safeKkm = Number.isFinite(Number(kkm)) ? Number(kkm) : (0.75 * safeScale);
+        const sangatBaikThreshold = Math.min(0.95 * safeScale, safeKkm + (0.12 * safeScale));
+
+        let maxItem = validWithDesc[0];
+        let minItem = validWithDesc[0];
+
+        validWithDesc.forEach(item => {
+            if (Number(item.score) > Number(maxItem.score)) maxItem = item;
+            if (Number(item.score) < Number(minItem.score)) minItem = item;
+        });
+
+        const maxScore = Number(maxItem.score);
+        const minScore = Number(minItem.score);
+        const maxDesc = lowerCaseFirstChar(maxItem.description);
+        const minDesc = lowerCaseFirstChar(minItem.description);
+
+        // Kasus 1: Hanya 1 TP yang memiliki nilai UH
+        if (validWithDesc.length === 1) {
+            if (maxScore >= safeKkm) {
+                const predikat = maxScore >= sangatBaikThreshold ? 'sangat baik' : 'baik';
+                return `Menunjukkan penguasaan yang ${predikat} dalam ${maxDesc}.`;
+            }
+            return `Perlu bimbingan lebih lanjut dalam ${maxDesc}.`;
+        }
+
+        // Kasus 2: Lebih dari 1 TP terisi, namun seluruh nilai TP sama persis
+        if (maxItem.tpNumber === minItem.tpNumber || maxScore === minScore) {
+            if (maxScore >= safeKkm) {
+                const predikat = maxScore >= sangatBaikThreshold ? 'sangat baik' : 'baik';
+                return `Menunjukkan penguasaan yang ${predikat} secara merata dalam seluruh materi, termasuk ${maxDesc}.`;
+            }
+            return `Perlu bimbingan lebih lanjut secara menyeluruh, terutama dalam ${maxDesc}.`;
+        }
+
+        // Kasus 3: Terdapat TP dengan nilai tertinggi dan TP dengan nilai terendah yang berbeda
+        let kalimatMax = '';
+        if (maxScore >= sangatBaikThreshold) {
+            kalimatMax = `Menunjukkan penguasaan yang sangat baik dalam ${maxDesc}.`;
+        } else if (maxScore >= safeKkm) {
+            kalimatMax = `Menunjukkan penguasaan yang baik dalam ${maxDesc}.`;
+        } else {
+            kalimatMax = `Menunjukkan penguasaan yang cukup dalam ${maxDesc}.`;
+        }
+
+        let kalimatMin = '';
+        if (minScore < safeKkm) {
+            kalimatMin = `Perlu bimbingan lebih lanjut dalam ${minDesc}.`;
+        } else if (minScore < sangatBaikThreshold) {
+            kalimatMin = `Perlu peningkatan dalam ${minDesc}.`;
+        } else {
+            kalimatMin = `Tetap pertahankan capaian dalam ${minDesc}.`;
+        }
+
+        return `${kalimatMax} ${kalimatMin}`;
+    }
+
+    // =========================================================================
+    // 7. PERHITUNGAN NILAI ASLI, PENGKATROLAN KETAT, NILAI JADI, PERINGKAT & DESKRIPSI
     //    - Nilai Asli muncul HANYA jika minimal ada 1 nilai UH, PSTS wajib ada,
     //      dan PSAS wajib ada. Jika belum terpenuhi -> null (tampil strip "-").
     //    - Nilai Jadi & Katrol HANYA dihitung dari siswa yang sudah memiliki
     //      Nilai Asli. Siswa tanpa Nilai Asli -> Nilai Jadi tetap null ("-").
+    //    - Deskripsi otomatis muncul segera setelah minimal 1 nilai UH/TP diisi.
     // =========================================================================
     function recalculateAllScores() {
         const cps = state.currentCps;
         const students = state.currentStudents;
-        const { bobot_uh, bobot_psts, bobot_psas, nilai_min, nilai_max } = state.config;
+        const { kkm, bobot_uh, bobot_psts, bobot_psas, nilai_min, nilai_max } = state.config;
         const totalBobot = (Number(bobot_uh) || 0) + (Number(bobot_psts) || 0) + (Number(bobot_psas) || 0);
 
         const rawResults = [];
 
-        // Langkah 1: Hitung Nilai Asli tiap siswa yang memenuhi syarat lengkap
+        // Langkah 1: Hitung Nilai Asli & Deskripsi Raport (dari nilai UH/TP saja)
         students.forEach(st => {
             const sc = state.scoresByStudent[st.id] || { uh: {}, psts: null, psas: null, tambahan: null };
 
-            // Kumpulkan nilai UH yang sudah terisi
+            // Kumpulkan nilai UH yang sudah terisi beserta kalimat TP-nya (abaikan PSTS/PSAS/Tambahan)
             const filledUhValues = [];
-            cps.forEach(cp => {
+            const scoredTpList = [];
+            cps.forEach((cp, cpIdx) => {
                 const val = sc.uh[cp.id];
                 if (isValidScore(val)) {
-                    filledUhValues.push(Number(val));
+                    const numVal = Number(val);
+                    filledUhValues.push(numVal);
+                    scoredTpList.push({
+                        tpNumber: Number(cp.cp_number) || (cpIdx + 1),
+                        score: numVal,
+                        description: cp.description || ''
+                    });
                 }
             });
+
+            // Auto-generate deskripsi raport dari nilai TP tertinggi & terendah
+            const deskripsi = generateRaportDescription(scoredTpList, kkm, state.scaleMax);
 
             const hasMinimalOneUh = filledUhValues.length >= 1;
             const hasPsts = isValidScore(sc.psts);
@@ -2281,7 +2410,8 @@
                     tambahVal,
                     nilaiKatrol: null,
                     nilaiJadi: null,
-                    rank: null
+                    rank: null,
+                    deskripsi
                 });
                 return;
             }
@@ -2302,7 +2432,8 @@
                 tambahVal,
                 nilaiKatrol: nilaiAsli,
                 nilaiJadi: nilaiAsli,
-                rank: null
+                rank: null,
+                deskripsi
             });
         });
 
@@ -2406,7 +2537,7 @@
 
         const bodyRowsHtml = students.map((st, idx) => {
             const sc = state.scoresByStudent[st.id];
-            const calc = state.calcByStudent[st.id] || { hasNilaiAsli: false, nilaiAsli: null, nilaiJadi: null, rank: null };
+            const calc = state.calcByStudent[st.id] || { hasNilaiAsli: false, nilaiAsli: null, nilaiJadi: null, rank: null, deskripsi: '' };
 
             const rowRankClass = calc.rank === 1 ? 'rank-row-1' : calc.rank === 2 ? 'rank-row-2' : calc.rank === 3 ? 'rank-row-3' : '';
 
@@ -2468,7 +2599,11 @@
                         <span class="calc-pill ${jadiCls}" id="nilaiJadi_${st.id}">${formatDisplayNumber(calc.nilaiJadi)}</span>
                     </td>
                     <td id="rankCell_${st.id}">${rankHtml}</td>
-                    <td class="desc-placeholder"></td>
+                    <td class="desc-cell" id="descCell_${st.id}" title="${escapeHtml(calc.deskripsi || '')}">
+                        ${calc.deskripsi
+                            ? `<div class="desc-text">${escapeHtml(calc.deskripsi)}</div>`
+                            : `<span class="desc-empty">Isi nilai UH/TP untuk deskripsi otomatis</span>`}
+                    </td>
                 </tr>
             `;
         }).join('');
@@ -2625,6 +2760,16 @@
             const rankEl = document.getElementById(`rankCell_${st.id}`);
             if (rankEl) {
                 rankEl.innerHTML = buildRankBadgeHtml(calc.rank);
+            }
+
+            // Perbarui kolom Deskripsi Raport secara real-time saat nilai UH/TP atau KKM berubah
+            const descEl = document.getElementById(`descCell_${st.id}`);
+            if (descEl) {
+                const descText = calc.deskripsi || '';
+                descEl.title = descText;
+                descEl.innerHTML = descText
+                    ? `<div class="desc-text">${escapeHtml(descText)}</div>`
+                    : `<span class="desc-empty">Isi nilai UH/TP untuk deskripsi otomatis</span>`;
             }
         });
 
