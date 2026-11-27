@@ -1032,9 +1032,10 @@
                 
                 <div id="guruStep2" class="step-section hidden">
                     <div class="info-box info-box-success" id="verifiedSchoolInfoGuru"></div>
+                    <!-- INPUT PENCARIAN & LOGIN KODE GURU (MINIMAL 3 KARAKTER, BOLEH 4 KARAKTER, REALTIME) -->
                     <div class="form-group">
-                        <label>Cari & Pilih Guru (Masukkan Kode Guru):</label>
-                        <input type="text" id="searchGuruCode" maxlength="4" style="text-transform: uppercase; letter-spacing: 2px; text-align: center; font-weight: bold; font-size: 1.1rem;" placeholder="KODE GURU (4 Karakter)" oninput="cariGuru(this.value)" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); eksekusiMasukGuru(); }">
+                        <label for="searchGuruCode">Cari & Pilih Guru (Kode Guru 3–4 Karakter):</label>
+                        <input type="text" id="searchGuruCode" minlength="3" maxlength="4" autocomplete="off" style="text-transform: uppercase; letter-spacing: 2px; text-align: center; font-weight: bold; font-size: 1.1rem;" placeholder="KODE GURU (3–4 Karakter)" oninput="cariGuru(this.value)" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); eksekusiMasukGuru(); }">
                     </div>
                     
                     <!-- Wadah untuk memunculkan daftar hasil pencarian guru secara realtime -->
@@ -1340,6 +1341,8 @@
         let currentPeriodeGuru = null; // Menyimpan tahun ajaran & semester aktif untuk login Guru
         let currentSchoolTeachers = []; 
         let selectedGuruToLogin = null; // Menyimpan guru yang dipilih
+        let guruSearchDebounceTimer = null; // Timer debounce pencarian kode guru realtime (mode RPC/RLS)
+        let guruSearchRequestId = 0; // Penanda urutan request agar hasil pencarian lama tidak menimpa hasil terbaru
         let currentSchoolAdmin = null;
         let currentPeriodeAdmin = null; // Menyimpan tahun ajaran & semester aktif untuk login Admin
         let allSchools = [];
@@ -1618,8 +1621,15 @@
                 if(document.getElementById(id)) document.getElementById(id).value = '';
             });
             
+            if (guruSearchDebounceTimer) {
+                clearTimeout(guruSearchDebounceTimer);
+                guruSearchDebounceTimer = null;
+            }
+            guruSearchRequestId++;
+
             if (document.getElementById('teacherSearchResults')) {
                 document.getElementById('teacherSearchResults').innerHTML = '';
+                document.getElementById('teacherSearchResults').style.display = 'none';
             }
             if (document.getElementById('searchGuruCode')) {
                 document.getElementById('searchGuruCode').value = '';
@@ -1627,6 +1637,7 @@
             
             currentSchoolGuru = null;
             currentPeriodeGuru = null;
+            currentSchoolTeachers = [];
             currentSchoolAdmin = null;
             currentPeriodeAdmin = null;
             selectedGuruToLogin = null;
@@ -1817,9 +1828,9 @@
             currentSchoolGuru = data;
             currentPeriodeGuru = activePeriode;
             
-            // KETERANGAN: Coba ambil daftar guru untuk fitur pencarian cepat.
-            // Jika RLS menyembunyikan tabel `gurus` sebelum login, daftar akan kosong dan alur otomatis
-            // beralih ke mode input langsung 4 karakter Kode Guru yang diverifikasi lewat RPC `verify_school_login`.
+            // KETERANGAN: Coba ambil daftar guru untuk fitur pencarian cepat lokal.
+            // Jika RLS menyembunyikan tabel `gurus` sebelum login, daftar akan kosong dan pencarian realtime
+            // otomatis memverifikasi Kode Guru (3–4 karakter) langsung melalui RPC `verify_school_login`.
             const { data: teachers, error: errT } = await supabaseClient
                 .from('gurus')
                 .select('id, name, code')
@@ -1849,125 +1860,209 @@
             resetPencarianGuru();
         }
 
+        // KETERANGAN: Helper escape HTML sederhana agar nama/kode guru aman dirender ke DOM
+        function escapeHtmlGuru(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // KETERANGAN: Reset state input & wadah hasil pencarian guru realtime
         function resetPencarianGuru() {
             const searchInput = document.getElementById('searchGuruCode');
             const resultsContainer = document.getElementById('teacherSearchResults');
             const btnMasuk = document.getElementById('btnMasukGuru');
-            
+
+            if (guruSearchDebounceTimer) {
+                clearTimeout(guruSearchDebounceTimer);
+                guruSearchDebounceTimer = null;
+            }
+            guruSearchRequestId++;
+
             searchInput.value = '';
             searchInput.disabled = false;
+            searchInput.placeholder = "KODE GURU (3–4 Karakter)";
             btnMasuk.disabled = false;
             btnMasuk.innerText = 'Masuk Dashboard Guru ➔';
             btnMasuk.classList.add('hidden');
             selectedGuruToLogin = null;
-            
+
             if (!currentSchoolTeachers || currentSchoolTeachers.length === 0) {
-                // Mode verifikasi aman RLS: kolom tetap aktif untuk mengetik tepat 4 karakter Kode Guru
-                resultsContainer.innerHTML = `<div style="padding:10px 12px; text-align:center; color:var(--text-muted); font-size:0.86rem;">Masukkan tepat <strong>4 karakter Kode Guru</strong> Anda untuk verifikasi login.</div>`;
+                // Mode verifikasi aman RLS: pencarian otomatis realtime via RPC mulai 3 karakter (boleh 3 atau 4 karakter)
+                resultsContainer.innerHTML = `<div style="padding:10px 12px; text-align:center; color:var(--text-muted); font-size:0.86rem;">Ketik minimal <strong>3 karakter</strong> Kode Guru (3–4 karakter) untuk pencarian otomatis.</div>`;
                 resultsContainer.style.display = 'block';
-                searchInput.placeholder = "KODE GURU (4 Karakter)";
             } else {
                 resultsContainer.style.display = 'none';
                 resultsContainer.innerHTML = '';
-                searchInput.placeholder = "KODE (Min. 3 Huruf)";
             }
             setTimeout(() => searchInput.focus(), 100);
         }
 
+        // KETERANGAN: Pencarian guru secara realtime otomatis saat mengetik minimal 3 karakter (mendukung 3 atau 4 karakter)
         function cariGuru(val) {
             const searchInput = document.getElementById('searchGuruCode');
-            const query = val.replace(/\s+/g, '').toUpperCase();
+            // Normalisasi: hapus spasi, huruf kapital, maksimal 4 karakter
+            const query = String(val || '').replace(/\s+/g, '').toUpperCase().slice(0, 4);
             if (searchInput && searchInput.value !== query) {
                 searchInput.value = query;
             }
 
             const resultsContainer = document.getElementById('teacherSearchResults');
             const btnMasuk = document.getElementById('btnMasukGuru');
-            
-            // Reset pilihan guru saat mengetik ulang
+
+            // Batalkan pencarian debounce sebelumnya setiap kali user mengetik
+            if (guruSearchDebounceTimer) {
+                clearTimeout(guruSearchDebounceTimer);
+                guruSearchDebounceTimer = null;
+            }
+            const currentReqId = ++guruSearchRequestId;
+
+            // Reset pilihan guru & status tombol saat input berubah
             selectedGuruToLogin = null;
             btnMasuk.classList.add('hidden');
+            btnMasuk.disabled = false;
+            btnMasuk.innerText = 'Masuk Dashboard Guru ➔';
 
-            // Mode verifikasi aman RLS (daftar guru tidak terekspos ke publik sebelum login)
-            if (!currentSchoolTeachers || currentSchoolTeachers.length === 0) {
-                if (query.length === 4) {
-                    resultsContainer.innerHTML = `<div style="padding:10px 12px; text-align:center; color:var(--success); font-size:0.88rem; font-weight:600;">Kode Guru <strong>${query}</strong> siap diverifikasi. Klik tombol Masuk di bawah.</div>`;
+            // Jika kurang dari 3 karakter, belum mulai mencari
+            if (query.length < 3) {
+                if (!currentSchoolTeachers || currentSchoolTeachers.length === 0) {
+                    resultsContainer.innerHTML = `<div style="padding:10px 12px; text-align:center; color:var(--text-muted); font-size:0.86rem;">Ketik minimal <strong>3 karakter</strong> Kode Guru (boleh 3 atau 4 karakter) — (${query.length}/3–4).</div>`;
                     resultsContainer.style.display = 'block';
-                    btnMasuk.classList.remove('hidden');
+                } else if (query.length > 0) {
+                    resultsContainer.innerHTML = `<div style="padding:10px 12px; text-align:center; color:var(--text-muted); font-size:0.86rem;">Ketik minimal <strong>3 karakter</strong> untuk pencarian otomatis (${query.length}/3)...</div>`;
+                    resultsContainer.style.display = 'block';
                 } else {
-                    resultsContainer.innerHTML = `<div style="padding:10px 12px; text-align:center; color:var(--text-muted); font-size:0.86rem;">Masukkan tepat <strong>4 karakter Kode Guru</strong> Anda (${query.length}/4).</div>`;
-                    resultsContainer.style.display = 'block';
+                    resultsContainer.style.display = 'none';
+                    resultsContainer.innerHTML = '';
                 }
                 return;
             }
 
-            if (query.length < 3) {
-                resultsContainer.style.display = 'none';
+            // MODE 1: VERIFIKASI REALTIME VIA RPC (SAAT TABEL `gurus` DILINDUNGI RLS)
+            if (!currentSchoolTeachers || currentSchoolTeachers.length === 0) {
+                if (!currentSchoolGuru) return;
+
+                resultsContainer.innerHTML = `<div style="padding:10px 12px; text-align:center; color:var(--primary); font-size:0.88rem; font-weight:600;">⏳ Mencari kode guru <strong>${escapeHtmlGuru(query)}</strong> secara realtime...</div>`;
+                resultsContainer.style.display = 'block';
+
+                guruSearchDebounceTimer = setTimeout(async () => {
+                    const { data: loginRes, error } = await supabaseClient.rpc('verify_school_login', {
+                        p_school_id: currentSchoolGuru.id,
+                        p_role: 'guru',
+                        p_secret: query
+                    });
+
+                    // Abaikan hasil jika user sudah mengetik karakter baru
+                    if (currentReqId !== guruSearchRequestId) return;
+
+                    if (!error && loginRes && loginRes.success) {
+                        const guru = loginRes.guru || {};
+                        const teacherId = guru.id || ('rpc_' + query);
+                        const teacherName = guru.name || guru.display_name || query;
+                        const teacherCode = (guru.code || query).trim().toUpperCase();
+
+                        const safeNameJs = teacherName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                        const safeCodeJs = teacherCode.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+                        resultsContainer.innerHTML = `
+                            <div class="teacher-item" id="guru_item_${escapeHtmlGuru(teacherId)}" style="padding:10px 14px; border-bottom:1px solid var(--border-color); cursor:pointer; transition:background 0.2s; background:var(--row-selected); border-left:4px solid var(--primary);"
+                                 onclick="pilihGuru('${escapeHtmlGuru(teacherId)}', '${safeNameJs}', '${safeCodeJs}', true)">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                                    <div>
+                                        <strong style="color:var(--text-dark);">${escapeHtmlGuru(teacherName)}</strong>
+                                        <span style="color:var(--text-muted); font-size:0.85rem;"> (Kode: ${escapeHtmlGuru(teacherCode)})</span>
+                                    </div>
+                                    <span style="color:var(--success); font-size:0.8rem; font-weight:700;">✓ Ditemukan</span>
+                                </div>
+                            </div>
+                        `;
+                        resultsContainer.style.display = 'block';
+
+                        // Otomatis pilih guru yang ditemukan tanpa mengganggu jika user masih ingin menambah karakter ke-4
+                        pilihGuru(teacherId, teacherName, teacherCode, false);
+                    } else {
+                        if (query.length === 3) {
+                            resultsContainer.innerHTML = `<div style="padding:10px 12px; text-align:center; color:var(--text-muted); font-size:0.86rem;">Kode <strong>${escapeHtmlGuru(query)}</strong> belum ditemukan. Lanjutkan ketik karakter ke-4 jika kode Anda 4 karakter.</div>`;
+                        } else {
+                            resultsContainer.innerHTML = `<div style="padding:10px 12px; text-align:center; color:var(--danger); font-size:0.88rem; font-weight:600;">Guru dengan kode <strong>${escapeHtmlGuru(query)}</strong> tidak ditemukan.</div>`;
+                        }
+                        resultsContainer.style.display = 'block';
+                    }
+                }, 220);
                 return;
             }
 
-            // Filter guru HANYA BERDASARKAN KODE (pencarian wajib pakai kode)
+            // MODE 2: PENCARIAN REALTIME LANGSUNG DARI DAFTAR GURU SEKOLAH (3–4 KARAKTER)
             const filtered = currentSchoolTeachers.filter(g => g.code && g.code.toUpperCase().includes(query));
 
             if (filtered.length === 0) {
-                resultsContainer.innerHTML = '<div style="padding:10px; text-align:center; color:var(--danger); font-size:0.9rem;">Guru dengan kode tersebut tidak ditemukan.</div>';
+                const hintExtra = query.length === 3 ? ' Coba periksa kembali atau ketik karakter ke-4.' : '';
+                resultsContainer.innerHTML = `<div style="padding:10px 12px; text-align:center; color:var(--danger); font-size:0.88rem;">Guru dengan kode <strong>${escapeHtmlGuru(query)}</strong> tidak ditemukan.${hintExtra}</div>`;
                 resultsContainer.style.display = 'block';
                 return;
             }
 
             resultsContainer.innerHTML = filtered.map(g => {
-                const safeName = (g.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                const safeCode = (g.code || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const safeNameJs = (g.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const safeCodeJs = (g.code || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 return `
-                <div class="teacher-item" id="guru_item_${g.id}" style="padding:10px 14px; border-bottom:1px solid var(--border-color); cursor:pointer; transition:background 0.2s;" 
-                     onclick="pilihGuru('${g.id}', '${safeName}', '${safeCode}')" 
-                     onmouseover="if(selectedGuruToLogin?.id !== '${g.id}') this.style.background='var(--row-hover)'" 
-                     onmouseout="if(selectedGuruToLogin?.id !== '${g.id}') this.style.background='transparent'">
-                    <strong style="color:var(--text-dark);">${g.name}</strong> <span style="color:var(--text-muted); font-size:0.85rem;">(Kode: ${g.code})</span>
+                <div class="teacher-item" id="guru_item_${escapeHtmlGuru(g.id)}" style="padding:10px 14px; border-bottom:1px solid var(--border-color); cursor:pointer; transition:background 0.2s;" 
+                     onclick="pilihGuru('${escapeHtmlGuru(g.id)}', '${safeNameJs}', '${safeCodeJs}', true)" 
+                     onmouseover="if(selectedGuruToLogin?.id !== '${escapeHtmlGuru(g.id)}') this.style.background='var(--row-hover)'" 
+                     onmouseout="if(selectedGuruToLogin?.id !== '${escapeHtmlGuru(g.id)}') this.style.background='transparent'">
+                    <strong style="color:var(--text-dark);">${escapeHtmlGuru(g.name)}</strong> <span style="color:var(--text-muted); font-size:0.85rem;">(Kode: ${escapeHtmlGuru(g.code)})</span>
                 </div>
             `;
             }).join('');
-            
+
             resultsContainer.style.display = 'block';
 
-            // Jika tepat 4 karakter dan cocok persis dengan 1 guru, otomatis siapkan pilihan
-            if (query.length === 4) {
-                const exactMatch = filtered.find(g => g.code && g.code.toUpperCase() === query);
-                if (exactMatch) {
-                    pilihGuru(exactMatch.id, exactMatch.name, exactMatch.code);
-                }
+            // Jika kode yang diketik (3 atau 4 karakter) cocok persis dengan 1 guru, otomatis highlight & tampilkan tombol Masuk
+            const exactMatch = filtered.find(g => g.code && g.code.toUpperCase() === query);
+            if (exactMatch) {
+                pilihGuru(exactMatch.id, exactMatch.name, exactMatch.code, false);
             }
         }
 
-        function pilihGuru(id, name, code = '') {
+        // KETERANGAN: Memilih guru dari daftar hasil pencarian realtime
+        // Parameter updateInput=true saat diklik manual; false saat auto-select agar ketikan ke-4 tidak terganggu
+        function pilihGuru(id, name, code = '', updateInput = true) {
             selectedGuruToLogin = { id, name, code: (code || '').trim().toUpperCase() };
-            
+
             // Reset tampilan (hapus highlight dari semua item)
             document.querySelectorAll('.teacher-item').forEach(item => {
                 item.style.background = 'transparent';
                 item.style.borderLeft = 'none';
             });
-            
-            // Highlight item yang diklik
+
+            // Highlight item yang dipilih
             const selectedEl = document.getElementById(`guru_item_${id}`);
             if (selectedEl) {
                 selectedEl.style.background = 'var(--row-selected)';
                 selectedEl.style.borderLeft = '4px solid var(--primary)';
             }
 
-            if (selectedGuruToLogin.code) {
+            if (updateInput && selectedGuruToLogin.code) {
                 const searchInput = document.getElementById('searchGuruCode');
                 if (searchInput) searchInput.value = selectedGuruToLogin.code;
             }
-            
+
             // Munculkan tombol masuk
             document.getElementById('btnMasukGuru').classList.remove('hidden');
         }
 
-        // KETERANGAN: Verifikasi Kode Guru (wajib tepat 4 karakter) via RPC `verify_school_login`
+        // KETERANGAN: Verifikasi Kode Guru (wajib 3 sampai 4 karakter) via RPC `verify_school_login`
         // lalu simpan sesi RLS ke localStorage (`nilai_pro_session`) dan sesi dashboard ke sessionStorage (`guruData`)
         async function eksekusiMasukGuru() {
             if (!currentSchoolGuru || !currentPeriodeGuru) return;
+
+            if (guruSearchDebounceTimer) {
+                clearTimeout(guruSearchDebounceTimer);
+                guruSearchDebounceTimer = null;
+            }
 
             const searchInput = document.getElementById('searchGuruCode');
             const inputKodeGuru = ((selectedGuruToLogin && selectedGuruToLogin.code)
@@ -1975,9 +2070,9 @@
                 : (searchInput ? searchInput.value : '')
             ).replace(/\s+/g, '').toUpperCase();
 
-            // Validasi ketat: Kode Guru harus tepat 4 karakter
-            if (inputKodeGuru.length !== 3) {
-                showAutoMessage('guruStatus', "Kode Guru wajib tepat 4 karakter!", true);
+            // Validasi ketat frontend: Kode Guru minimal 3 karakter dan maksimal 4 karakter (boleh 3 atau 4)
+            if (inputKodeGuru.length < 3 || inputKodeGuru.length > 4) {
+                showAutoMessage('guruStatus', "Kode Guru wajib 3 sampai 4 karakter!", true);
                 if (searchInput) searchInput.focus();
                 return;
             }
