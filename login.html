@@ -1976,7 +1976,7 @@
             ).replace(/\s+/g, '').toUpperCase();
 
             // Validasi ketat: Kode Guru harus tepat 4 karakter
-            if (inputKodeGuru.length !== 4) {
+            if (inputKodeGuru.length !== 3) {
                 showAutoMessage('guruStatus', "Kode Guru wajib tepat 4 karakter!", true);
                 if (searchInput) searchInput.focus();
                 return;
