@@ -1034,7 +1034,7 @@
                     <div class="info-box info-box-success" id="verifiedSchoolInfoGuru"></div>
                     <div class="form-group">
                         <label>Cari & Pilih Guru (Masukkan Kode Guru):</label>
-                        <input type="text" id="searchGuruCode" maxlength="4" style="text-transform: uppercase; letter-spacing: 2px; text-align: center; font-weight: bold; font-size: 1.1rem;" placeholder="KODE (Min. 3 Huruf)" oninput="cariGuru(this.value)">
+                        <input type="text" id="searchGuruCode" maxlength="4" style="text-transform: uppercase; letter-spacing: 2px; text-align: center; font-weight: bold; font-size: 1.1rem;" placeholder="KODE GURU (4 Karakter)" oninput="cariGuru(this.value)" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); eksekusiMasukGuru(); }">
                     </div>
                     
                     <!-- Wadah untuk memunculkan daftar hasil pencarian guru secara realtime -->
@@ -1330,7 +1330,11 @@
 
     <script>
         /* ==================== INISIALISASI SUPABASE & STATE GLOBAL ==================== */
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // KETERANGAN: Instance `supabaseClient` (dengan header RLS) sudah diinisialisasi oleh config.js.
+        // Pengaman fallback berikut mencegah error apabila config.js belum membuat instance, tanpa deklarasi const ganda.
+        if (typeof supabaseClient === 'undefined' && typeof supabase !== 'undefined') {
+            window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
 
         let currentSchoolGuru = null;
         let currentPeriodeGuru = null; // Menyimpan tahun ajaran & semester aktif untuk login Guru
@@ -1732,18 +1736,58 @@
         function confirmLogout() {
             openConfirmModal("Logout", "Yakin ingin keluar dari Dashboard Developer?", false, async () => {
                 await supabaseClient.auth.signOut();
-                sessionStorage.removeItem('devLoggedIn'); 
+                sessionStorage.removeItem('devLoggedIn');
+                localStorage.removeItem('nilai_pro_session');
                 window.location.reload(); 
             });
         }
 
-        /* ==================== AUTENTIKASI GURU (DENGAN DETEKSI PERIODE AKTIF) ==================== */
+        /* ==================== HELPER VERIFIKASI KODE SEKOLAH (RPC & FALLBACK RLS) ==================== */
+        // KETERANGAN: Menyeragamkan pembacaan data sekolah dari RPC `verify_school_access`
+        // (mendukung format objek tunggal, array 1 baris, maupun wrapper { success, school/data })
+        async function fetchSchoolByAccessCode(cleanCode) {
+            const { data: rpcData, error: rpcError } = await supabaseClient.rpc('verify_school_access', {
+                p_access_code: cleanCode
+            });
+
+            if (!rpcError && rpcData) {
+                let schoolObj = null;
+                if (Array.isArray(rpcData)) {
+                    schoolObj = rpcData.length > 0 ? rpcData[0] : null;
+                } else if (typeof rpcData === 'object') {
+                    if (rpcData.success === false) {
+                        return { data: null, error: { message: rpcData.message || 'Kode Sekolah Tidak Ditemukan!' } };
+                    }
+                    schoolObj = rpcData.school || rpcData.data || (rpcData.id ? rpcData : null);
+                }
+
+                if (schoolObj && schoolObj.id) {
+                    return { data: schoolObj, error: null };
+                }
+                return { data: null, error: null };
+            }
+
+            // Fallback aman apabila fungsi RPC tidak ditemukan di database (PGRST202)
+            if (rpcError && (rpcError.code === 'PGRST202' || String(rpcError.message || '').toLowerCase().includes('could not find the function'))) {
+                const { data: fbData, error: fbError } = await supabaseClient
+                    .from('schools')
+                    .select('id, name, tingkat, is_free, max_rombel, exp_date, access_code')
+                    .eq('access_code', cleanCode)
+                    .single();
+                return { data: fbData || null, error: fbError || null };
+            }
+
+            return { data: null, error: rpcError || null };
+        }
+
+        /* ==================== AUTENTIKASI GURU (DENGAN DETEKSI PERIODE AKTIF & RLS) ==================== */
         async function verifikasiKodeGuru() {
-            const code = document.getElementById('guruSchoolCode').value.trim().toUpperCase();
+            const rawCode = document.getElementById('guruSchoolCode').value.trim().toUpperCase();
+            const cleanCode = rawCode.replace(/\s+/g, '');
             const btnVerif = document.getElementById('btnVerifikasiGuru');
 
-            if (!code || code.length !== 6) {
-                showAutoMessage('guruStatus', "Masukkan Kode Sekolah 6 Karakter!", true);
+            if (!cleanCode || cleanCode.length !== 6) {
+                showAutoMessage('guruStatus', "Masukkan Kode Sekolah tepat 6 Karakter!", true);
                 return;
             }
 
@@ -1751,11 +1795,14 @@
             document.getElementById('guruStatus').innerText = "Memeriksa kode akses & periode aktif...";
             if (btnVerif) btnVerif.disabled = true;
 
-            const { data, error } = await supabaseClient.from('schools').select('id, name, tingkat').eq('access_code', code).single();
+            const { data, error } = await fetchSchoolByAccessCode(cleanCode);
 
             if (error || !data) {
                 if (btnVerif) btnVerif.disabled = false;
-                showAutoMessage('guruStatus', "Kode akses sekolah tidak ditemukan!", true);
+                const errMsg = error && error.message && error.code !== 'PGRST116'
+                    ? "Gagal: " + error.message
+                    : "Kode akses sekolah tidak ditemukan!";
+                showAutoMessage('guruStatus', errMsg, true);
                 return;
             }
 
@@ -1770,7 +1817,9 @@
             currentSchoolGuru = data;
             currentPeriodeGuru = activePeriode;
             
-            // Ambil data guru khusus untuk Tahun Ajaran yang sedang aktif
+            // KETERANGAN: Coba ambil daftar guru untuk fitur pencarian cepat.
+            // Jika RLS menyembunyikan tabel `gurus` sebelum login, daftar akan kosong dan alur otomatis
+            // beralih ke mode input langsung 4 karakter Kode Guru yang diverifikasi lewat RPC `verify_school_login`.
             const { data: teachers, error: errT } = await supabaseClient
                 .from('gurus')
                 .select('id, name, code')
@@ -1779,7 +1828,7 @@
 
             if (btnVerif) btnVerif.disabled = false;
 
-            if (!errT && teachers) {
+            if (!errT && Array.isArray(teachers)) {
                 currentSchoolTeachers = teachers;
             } else {
                 currentSchoolTeachers = [];
@@ -1796,7 +1845,7 @@
                 <span style="font-size: 0.86rem; opacity: 0.92; display: inline-block; margin-top: 3px;">📅 Periode Aktif: <strong>${activePeriode.academic_year_name} — Semester ${activePeriode.semester_name}</strong></span>
             `;
             
-            // Reset form pencarian dan mulai flow search
+            // Reset form pencarian/input kode guru
             resetPencarianGuru();
         }
 
@@ -1806,31 +1855,51 @@
             const btnMasuk = document.getElementById('btnMasukGuru');
             
             searchInput.value = '';
-            resultsContainer.style.display = 'none';
-            resultsContainer.innerHTML = '';
+            searchInput.disabled = false;
+            btnMasuk.disabled = false;
+            btnMasuk.innerText = 'Masuk Dashboard Guru ➔';
             btnMasuk.classList.add('hidden');
             selectedGuruToLogin = null;
             
             if (!currentSchoolTeachers || currentSchoolTeachers.length === 0) {
-                resultsContainer.innerHTML = `<div style="padding:15px; text-align:center; color:var(--danger); font-weight:bold;">Belum ada guru yang terdaftar di Tahun Ajaran ${currentPeriodeGuru?.academic_year_name || 'aktif'}.</div>`;
+                // Mode verifikasi aman RLS: kolom tetap aktif untuk mengetik tepat 4 karakter Kode Guru
+                resultsContainer.innerHTML = `<div style="padding:10px 12px; text-align:center; color:var(--text-muted); font-size:0.86rem;">Masukkan tepat <strong>4 karakter Kode Guru</strong> Anda untuk verifikasi login.</div>`;
                 resultsContainer.style.display = 'block';
-                searchInput.disabled = true;
-                searchInput.placeholder = "Data guru kosong";
+                searchInput.placeholder = "KODE GURU (4 Karakter)";
             } else {
-                searchInput.disabled = false;
+                resultsContainer.style.display = 'none';
+                resultsContainer.innerHTML = '';
                 searchInput.placeholder = "KODE (Min. 3 Huruf)";
-                setTimeout(() => searchInput.focus(), 100);
             }
+            setTimeout(() => searchInput.focus(), 100);
         }
 
         function cariGuru(val) {
-            const query = val.trim().toUpperCase();
+            const searchInput = document.getElementById('searchGuruCode');
+            const query = val.replace(/\s+/g, '').toUpperCase();
+            if (searchInput && searchInput.value !== query) {
+                searchInput.value = query;
+            }
+
             const resultsContainer = document.getElementById('teacherSearchResults');
             const btnMasuk = document.getElementById('btnMasukGuru');
             
-            // Reset state saat ngetik
+            // Reset pilihan guru saat mengetik ulang
             selectedGuruToLogin = null;
             btnMasuk.classList.add('hidden');
+
+            // Mode verifikasi aman RLS (daftar guru tidak terekspos ke publik sebelum login)
+            if (!currentSchoolTeachers || currentSchoolTeachers.length === 0) {
+                if (query.length === 4) {
+                    resultsContainer.innerHTML = `<div style="padding:10px 12px; text-align:center; color:var(--success); font-size:0.88rem; font-weight:600;">Kode Guru <strong>${query}</strong> siap diverifikasi. Klik tombol Masuk di bawah.</div>`;
+                    resultsContainer.style.display = 'block';
+                    btnMasuk.classList.remove('hidden');
+                } else {
+                    resultsContainer.innerHTML = `<div style="padding:10px 12px; text-align:center; color:var(--text-muted); font-size:0.86rem;">Masukkan tepat <strong>4 karakter Kode Guru</strong> Anda (${query.length}/4).</div>`;
+                    resultsContainer.style.display = 'block';
+                }
+                return;
+            }
 
             if (query.length < 3) {
                 resultsContainer.style.display = 'none';
@@ -1846,20 +1915,32 @@
                 return;
             }
 
-            resultsContainer.innerHTML = filtered.map(g => `
+            resultsContainer.innerHTML = filtered.map(g => {
+                const safeName = (g.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const safeCode = (g.code || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                return `
                 <div class="teacher-item" id="guru_item_${g.id}" style="padding:10px 14px; border-bottom:1px solid var(--border-color); cursor:pointer; transition:background 0.2s;" 
-                     onclick="pilihGuru('${g.id}', '${g.name.replace(/'/g, "\\'")}')" 
+                     onclick="pilihGuru('${g.id}', '${safeName}', '${safeCode}')" 
                      onmouseover="if(selectedGuruToLogin?.id !== '${g.id}') this.style.background='var(--row-hover)'" 
                      onmouseout="if(selectedGuruToLogin?.id !== '${g.id}') this.style.background='transparent'">
                     <strong style="color:var(--text-dark);">${g.name}</strong> <span style="color:var(--text-muted); font-size:0.85rem;">(Kode: ${g.code})</span>
                 </div>
-            `).join('');
+            `;
+            }).join('');
             
             resultsContainer.style.display = 'block';
+
+            // Jika tepat 4 karakter dan cocok persis dengan 1 guru, otomatis siapkan pilihan
+            if (query.length === 4) {
+                const exactMatch = filtered.find(g => g.code && g.code.toUpperCase() === query);
+                if (exactMatch) {
+                    pilihGuru(exactMatch.id, exactMatch.name, exactMatch.code);
+                }
+            }
         }
 
-        function pilihGuru(id, name) {
-            selectedGuruToLogin = { id, name };
+        function pilihGuru(id, name, code = '') {
+            selectedGuruToLogin = { id, name, code: (code || '').trim().toUpperCase() };
             
             // Reset tampilan (hapus highlight dari semua item)
             document.querySelectorAll('.teacher-item').forEach(item => {
@@ -1873,25 +1954,84 @@
                 selectedEl.style.background = 'var(--row-selected)';
                 selectedEl.style.borderLeft = '4px solid var(--primary)';
             }
+
+            if (selectedGuruToLogin.code) {
+                const searchInput = document.getElementById('searchGuruCode');
+                if (searchInput) searchInput.value = selectedGuruToLogin.code;
+            }
             
             // Munculkan tombol masuk
             document.getElementById('btnMasukGuru').classList.remove('hidden');
         }
 
-        function eksekusiMasukGuru() {
-            if (!selectedGuruToLogin) return;
-            langsungMasukGuru(selectedGuruToLogin.id, selectedGuruToLogin.name);
+        // KETERANGAN: Verifikasi Kode Guru (wajib tepat 4 karakter) via RPC `verify_school_login`
+        // lalu simpan sesi RLS ke localStorage (`nilai_pro_session`) dan sesi dashboard ke sessionStorage (`guruData`)
+        async function eksekusiMasukGuru() {
+            if (!currentSchoolGuru || !currentPeriodeGuru) return;
+
+            const searchInput = document.getElementById('searchGuruCode');
+            const inputKodeGuru = ((selectedGuruToLogin && selectedGuruToLogin.code)
+                ? selectedGuruToLogin.code
+                : (searchInput ? searchInput.value : '')
+            ).replace(/\s+/g, '').toUpperCase();
+
+            // Validasi ketat: Kode Guru harus tepat 4 karakter
+            if (inputKodeGuru.length !== 4) {
+                showAutoMessage('guruStatus', "Kode Guru wajib tepat 4 karakter!", true);
+                if (searchInput) searchInput.focus();
+                return;
+            }
+
+            const btnMasuk = document.getElementById('btnMasukGuru');
+            if (btnMasuk) {
+                btnMasuk.disabled = true;
+                btnMasuk.innerText = 'Memverifikasi... ⏳';
+            }
+
+            const { data: loginRes, error } = await supabaseClient.rpc('verify_school_login', {
+                p_school_id: currentSchoolGuru.id,
+                p_role: 'guru',
+                p_secret: inputKodeGuru
+            });
+
+            if (error || !loginRes || !loginRes.success) {
+                if (btnMasuk) {
+                    btnMasuk.disabled = false;
+                    btnMasuk.innerText = 'Masuk Dashboard Guru ➔';
+                }
+                const errMsg = loginRes?.message || (error ? 'Gagal: ' + error.message : 'Kode Guru tidak ditemukan!');
+                showAutoMessage('guruStatus', errMsg, true);
+                if (searchInput) searchInput.focus();
+                return;
+            }
+
+            // Data guru hasil verifikasi server (RPC)
+            const guru = loginRes.guru || {};
+            const teacherId = guru.id || selectedGuruToLogin?.id;
+            const teacherName = guru.name || guru.display_name || selectedGuruToLogin?.name || inputKodeGuru;
+
+            // Simpan sesi ke localStorage untuk header RLS di config.js
+            localStorage.setItem('nilai_pro_session', JSON.stringify({
+                school_id: currentSchoolGuru.id,
+                role: 'guru',
+                token: inputKodeGuru,
+                guru: guru
+            }));
+
+            langsungMasukGuru(teacherId, teacherName, inputKodeGuru);
         }
 
-        function langsungMasukGuru(teacherId, teacherName) {
+        function langsungMasukGuru(teacherId, teacherName, teacherCode = '') {
             if (!currentSchoolGuru || !currentPeriodeGuru) return;
 
             // Simpan sesi login guru beserta periode aktif sekolah ke sessionStorage
             const guruSession = {
                 id: teacherId,
                 display_name: teacherName,
+                code: teacherCode,
                 school_id: currentSchoolGuru.id,
                 school_name: currentSchoolGuru.name,
+                is_free: currentSchoolGuru.is_free,
                 academic_year_id: currentPeriodeGuru.academic_year_id,
                 academic_year_name: currentPeriodeGuru.academic_year_name,
                 semester_id: currentPeriodeGuru.semester_id,
@@ -1917,34 +2057,51 @@
             document.getElementById('adminTokenModal').classList.remove('active');
         }
 
-        function verifikasiTokenAdmin() {
-            const inputToken = document.getElementById('inputAdminToken').value.trim();
-
-            if (inputToken.length !== 4) {
-                showAutoMessage('adminTokenStatus', "Masukkan 4 digit token!", true);
+        // KETERANGAN: Verifikasi 4 digit Token Admin secara asinkron via RPC `verify_school_login`
+        async function verifikasiTokenAdmin() {
+            if (!currentSchoolAdmin || !currentSchoolAdmin.id) {
+                showAutoMessage('adminTokenStatus', "Data sekolah belum terverifikasi. Cek kode sekolah terlebih dahulu!", true);
                 return;
             }
 
-const { data: loginRes, error } = await supabaseClient.rpc('verify_school_login', {
-  p_school_id: currentSchoolAdmin.id, // sesuaikan dengan nama variabel sekolah admin Anda
-  p_role: 'admin',
-  p_secret: inputToken // sesuaikan dengan variabel input token admin Anda
-});
+            const tokenInputEl = document.getElementById('inputAdminToken');
+            const inputToken = tokenInputEl.value.trim();
 
-if (error || !loginRes || !loginRes.success) {
-  alert(loginRes?.message || 'Token Admin salah!');
-  return;
-}
+            if (!/^\d{4}$/.test(inputToken)) {
+                showAutoMessage('adminTokenStatus', "Masukkan 4 digit angka token!", true);
+                tokenInputEl.focus();
+                return;
+            }
 
-// Simpan sesi ke localStorage (pastikan menyimpan token & role untuk header RLS)
-localStorage.setItem('nilai_pro_session', JSON.stringify({
-  school_id: currentSchoolAdmin.id,
-  role: 'admin',
-  token: inputToken.trim()
-}));
+            document.getElementById('adminTokenStatus').style.color = "var(--primary)";
+            document.getElementById('adminTokenStatus').innerText = "Memverifikasi token admin...";
 
+            const { data: loginRes, error } = await supabaseClient.rpc('verify_school_login', {
+                p_school_id: currentSchoolAdmin.id,
+                p_role: 'admin',
+                p_secret: inputToken
+            });
 
-            
+            if (error || !loginRes || !loginRes.success) {
+                const errMsg = loginRes?.message || (error ? 'Gagal: ' + error.message : 'Token Admin salah!');
+                showAutoMessage('adminTokenStatus', errMsg, true);
+                tokenInputEl.value = '';
+                tokenInputEl.focus();
+                return;
+            }
+
+            // Simpan sesi ke localStorage agar header RLS di config.js aktif di halaman admin_dashboard.html
+            localStorage.setItem('nilai_pro_session', JSON.stringify({
+                school_id: currentSchoolAdmin.id,
+                role: 'admin',
+                token: inputToken
+            }));
+
+            showAutoMessage('adminTokenStatus', "Token valid! Mengalihkan...");
+            setTimeout(() => {
+                closeAdminTokenModal();
+                masukAdminDash();
+            }, 300);
         }
 
         async function cekKodeAdmin() {
@@ -1965,7 +2122,8 @@ localStorage.setItem('nilai_pro_session', JSON.stringify({
 
             const cleanCode = code.replace(/\s+/g, '');
 
-            const { data: school } = await supabaseClient.rpc('verify_school_access', { p_access_code: code });
+            // KETERANGAN: Panggil helper RPC `verify_school_access` agar variabel `data` & `error` konsisten
+            const { data, error } = await fetchSchoolByAccessCode(cleanCode);
 
             if (error || !data) {
                 let errText = "Kode Sekolah Tidak Valid!";
@@ -2591,30 +2749,7 @@ localStorage.setItem('nilai_pro_session', JSON.stringify({
                 const [resRombel, resMapel, resGuru, resSiswa, resAssign, resSems] = await Promise.all([
                     supabaseClient.from('rombels').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
                     supabaseClient.from('mapels').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
-                    
-                   // supabaseClient.from('gurus').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
-                    const { data: loginRes, error } = await supabaseClient.rpc('verify_school_login', {
-  p_school_id: currentSchool.id, // sesuaikan dengan nama variabel sekolah di login.html Anda
-  p_role: 'guru',
-  p_secret: inputKodeGuru // sesuaikan dengan variabel input kode guru Anda
-});
-
-if (error || !loginRes || !loginRes.success) {
-  alert(loginRes?.message || 'Kode Guru tidak ditemukan!');
-  return;
-}
-
-// Data guru sekarang ada di loginRes.guru
-const guru = loginRes.guru;
-
-// Simpan sesi ke localStorage (pastikan menyimpan token & role untuk header RLS)
-localStorage.setItem('nilai_pro_session', JSON.stringify({
-  school_id: currentSchool.id,
-  role: 'guru',
-  token: inputKodeGuru.trim().toUpperCase(),
-  guru: guru
-}));
-                    
+                    supabaseClient.from('gurus').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
                     supabaseClient.from('students').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
                     supabaseClient.from('teaching_assignments').select('id', { count: 'exact', head: true }).eq('school_id', managingSchoolId).eq('academic_year_id', yearId),
                     supabaseClient.from('semesters').select('id, name').eq('school_id', managingSchoolId).eq('academic_year_id', yearId)
