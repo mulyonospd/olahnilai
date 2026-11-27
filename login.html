@@ -1925,18 +1925,26 @@
                 return;
             }
 
-            if (currentSchoolAdmin && currentSchoolAdmin.admin_token === inputToken) {
-                showAutoMessage('adminTokenStatus', "Token valid! Mengalihkan...");
-                
-                setTimeout(() => {
-                    closeAdminTokenModal();
-                    masukAdminDash();
-                }, 300);
-            } else {
-                showAutoMessage('adminTokenStatus', "Token Admin salah!", true);
-                document.getElementById('inputAdminToken').value = '';
-                document.getElementById('inputAdminToken').focus();
-            }
+const { data: loginRes, error } = await supabaseClient.rpc('verify_school_login', {
+  p_school_id: currentSchoolAdmin.id, // sesuaikan dengan nama variabel sekolah admin Anda
+  p_role: 'admin',
+  p_secret: inputToken // sesuaikan dengan variabel input token admin Anda
+});
+
+if (error || !loginRes || !loginRes.success) {
+  alert(loginRes?.message || 'Token Admin salah!');
+  return;
+}
+
+// Simpan sesi ke localStorage (pastikan menyimpan token & role untuk header RLS)
+localStorage.setItem('nilai_pro_session', JSON.stringify({
+  school_id: currentSchoolAdmin.id,
+  role: 'admin',
+  token: inputToken.trim()
+}));
+
+
+            
         }
 
         async function cekKodeAdmin() {
