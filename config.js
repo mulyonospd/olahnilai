@@ -3,6 +3,17 @@
 const SUPABASE_URL = 'https://uasndiqnzekfsinahfug.supabase.co'; 
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhc25kaXFuemVrZnNpbmFoZnVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQyNjg1NzcsImV4cCI6MjEwOTg0NDU3N30.MmrHQSdJFZE8nrO3PzA4N7IvEmouefSpPquWYdF0i80';
 
+const session = JSON.parse(localStorage.getItem('nilai_pro_session') || '{}');
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  global: {
+    headers: {
+      'x-school-id': session.school_id || '',
+      'x-user-role': session.role || '',   // 'admin' atau 'guru'
+      'x-user-token': session.token || ''  // admin_token atau guru.code
+    }
+  }
+});
+
 // 1. Mencegah input selain angka dan titik (desimal)
 function cegahBukanAngka(e) {
     e.target.value = e.target.value.replace(/[^0-9.]/g, '');
