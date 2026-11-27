@@ -1957,7 +1957,7 @@
 
             const cleanCode = code.replace(/\s+/g, '');
 
-            const { data, error } = await supabaseClient.from('schools').select('*').eq('access_code', cleanCode).single();
+            const { data: school } = await supabaseClient.rpc('verify_school_access', { p_access_code: code });
 
             if (error || !data) {
                 let errText = "Kode Sekolah Tidak Valid!";
