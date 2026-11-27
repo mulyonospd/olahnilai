@@ -3813,53 +3813,95 @@
         return Math.round((val + Number.EPSILON) * factor) / factor;
     }
 
+    // Helper: Deteksi skala nilai aktif sekolah (100, 10, atau 4) agar selaras dengan input_nilai.html
+    function getActiveScaleMax() {
+        const fmt = String(state.variabelGlobal?.format_nilai || '').toLowerCase();
+        if (fmt.includes('satuan') || fmt === '10' || fmt === '0-10') return 10;
+        if (fmt.includes('skala_4') || fmt === '4' || fmt === '0-4') return 4;
+        return 100;
+    }
+
     function lowerCaseFirstChar(str) {
         const trimmed = String(str || '').trim().replace(/\.$/, '');
         if (!trimmed) return '';
         return trimmed.charAt(0).toLowerCase() + trimmed.slice(1);
     }
 
-    // Helper: Auto-generate deskripsi raport berdasarkan TP/CP tertinggi & terendah (mengabaikan PSTS/PSAS/Tambahan)
-    function generateRaportDescription(scoredTpList, kkm) {
+    // Helper: Auto-generate deskripsi raport berdasarkan TP/CP tertinggi & terendah
+    // (KHUSUS nilai UH/TP — secara ketat mengabaikan PSTS, PSAS, dan Tambahan; 100% sinkron dengan input_nilai.html)
+    function generateRaportDescription(scoredTpList, kkm, scaleMax = 100) {
         if (!scoredTpList || scoredTpList.length === 0) return '';
 
-        const validWithDesc = scoredTpList.filter(item => item.description && item.description.trim().length > 0);
+        const validWithDesc = scoredTpList.filter(item =>
+            item && Number.isFinite(Number(item.score)) && item.description && item.description.trim().length > 0
+        );
         if (validWithDesc.length === 0) return '';
+
+        const safeScale = (Number.isFinite(Number(scaleMax)) && Number(scaleMax) > 0) ? Number(scaleMax) : 100;
+        const safeKkm = Number.isFinite(Number(kkm)) ? Number(kkm) : (0.75 * safeScale);
+        const sangatBaikThreshold = Math.min(0.95 * safeScale, safeKkm + (0.12 * safeScale));
 
         let maxItem = validWithDesc[0];
         let minItem = validWithDesc[0];
 
         validWithDesc.forEach(item => {
-            if (item.score > maxItem.score) maxItem = item;
-            if (item.score < minItem.score) minItem = item;
+            if (Number(item.score) > Number(maxItem.score)) maxItem = item;
+            if (Number(item.score) < Number(minItem.score)) minItem = item;
         });
 
+        const maxScore = Number(maxItem.score);
+        const minScore = Number(minItem.score);
         const maxDesc = lowerCaseFirstChar(maxItem.description);
         const minDesc = lowerCaseFirstChar(minItem.description);
 
-        if (validWithDesc.length === 1 || maxItem.tpNumber === minItem.tpNumber) {
-            if (maxItem.score >= kkm) {
-                const predikat = maxItem.score >= Math.min(95, kkm + 12) ? 'sangat baik' : 'baik';
+        // Kasus 1: Hanya 1 TP yang memiliki nilai UH
+        if (validWithDesc.length === 1) {
+            if (maxScore >= safeKkm) {
+                const predikat = maxScore >= sangatBaikThreshold ? 'sangat baik' : 'baik';
                 return `Menunjukkan penguasaan yang ${predikat} dalam ${maxDesc}.`;
             }
             return `Perlu bimbingan lebih lanjut dalam ${maxDesc}.`;
         }
 
-        const predikatMax = maxItem.score >= Math.min(95, kkm + 12) ? 'sangat baik' : 'baik';
-        const kalimatMax = `Menunjukkan penguasaan yang ${predikatMax} dalam ${maxDesc}.`;
-        const kalimatMin = minItem.score < kkm
-            ? `Perlu bimbingan lebih lanjut dalam ${minDesc}.`
-            : `Perlu peningkatan dalam ${minDesc}.`;
+        // Kasus 2: Lebih dari 1 TP terisi, namun seluruh nilai TP sama persis
+        if (maxItem.tpNumber === minItem.tpNumber || maxScore === minScore) {
+            if (maxScore >= safeKkm) {
+                const predikat = maxScore >= sangatBaikThreshold ? 'sangat baik' : 'baik';
+                return `Menunjukkan penguasaan yang ${predikat} secara merata dalam seluruh materi, termasuk ${maxDesc}.`;
+            }
+            return `Perlu bimbingan lebih lanjut secara menyeluruh, terutama dalam ${maxDesc}.`;
+        }
+
+        // Kasus 3: Terdapat TP dengan nilai tertinggi dan TP dengan nilai terendah yang berbeda
+        let kalimatMax = '';
+        if (maxScore >= sangatBaikThreshold) {
+            kalimatMax = `Menunjukkan penguasaan yang sangat baik dalam ${maxDesc}.`;
+        } else if (maxScore >= safeKkm) {
+            kalimatMax = `Menunjukkan penguasaan yang baik dalam ${maxDesc}.`;
+        } else {
+            kalimatMax = `Menunjukkan penguasaan yang cukup dalam ${maxDesc}.`;
+        }
+
+        let kalimatMin = '';
+        if (minScore < safeKkm) {
+            kalimatMin = `Perlu bimbingan lebih lanjut dalam ${minDesc}.`;
+        } else if (minScore < sangatBaikThreshold) {
+            kalimatMin = `Perlu peningkatan dalam ${minDesc}.`;
+        } else {
+            kalimatMin = `Tetap pertahankan capaian dalam ${minDesc}.`;
+        }
 
         return `${kalimatMax} ${kalimatMin}`;
     }
 
     // Helper: Susun data lengkap siswa untuk 1 rombel (TP 1..10, PSTS, PSAS, Tambahan, Nilai Asli, Nilai Jadi, Peringkat, Deskripsi)
+    // Perhitungan Nilai Asli, Pengkatrolan Ketat, Nilai Jadi, Peringkat, dan Deskripsi diselaraskan 100% dengan input_nilai.html
     function buildRombelRekapRows(rekapItem) {
         const { rombel, mapel, tingkat } = rekapItem;
         const students = state.studentsByRombel[rombel.id] || [];
         const studentIdSet = new Set(students.map(s => s.id));
         const kkm = getKkmForMapelTingkat(mapel, tingkat);
+        const scaleMax = getActiveScaleMax();
 
         const cpList = state.myCps
             .filter(cp => cp.mapel_id === mapel.id && String(cp.tingkat) === String(tingkat))
@@ -3889,6 +3931,7 @@
             ? Math.max(0, Math.min(2, Number(rawJumlahKoma)))
             : 0;
 
+        // Langkah 1: Ekstrak nilai per siswa, hitung Nilai Asli (syarat: min 1 UH + PSTS + PSAS), & generate Deskripsi
         const rows = students.map((st, idx) => {
             const stGrades = relevantGrades.filter(g => g.student_id === st.id);
 
@@ -3931,34 +3974,21 @@
             const pstsVal = (pstsRow && !isNaN(Number(pstsRow.score))) ? Number(pstsRow.score) : null;
             const psasVal = (psasRow && !isNaN(Number(psasRow.score))) ? Number(psasRow.score) : null;
             const tambahanVal = (tambahanRow && !isNaN(Number(tambahanRow.score))) ? Number(tambahanRow.score) : null;
+            const explicitJadiVal = (explicitJadiRow && !isNaN(Number(explicitJadiRow.score))) ? Number(explicitJadiRow.score) : null;
 
-            // 3. Hitung Nilai Raport (Nilai Asli & Nilai Jadi)
+            // 3. Hitung Nilai Asli (syarat sama persis dengan input_nilai.html: min 1 UH + PSTS + PSAS)
             const filledUhScores = tpScores.filter(v => v !== null);
-            const hasAnyCoreGrade = filledUhScores.length > 0 || pstsVal !== null || psasVal !== null;
+            const isEligibleNilaiAsli = filledUhScores.length >= 1 && pstsVal !== null && psasVal !== null && totalBobot > 0;
 
             let nilaiAsli = null;
-            let nilaiJadi = null;
-
-            if (hasAnyCoreGrade) {
-                const avgUh = filledUhScores.length > 0
-                    ? filledUhScores.reduce((sum, v) => sum + v, 0) / filledUhScores.length
-                    : 0;
-                const rawAsli = ((avgUh * bUh) + ((pstsVal ?? 0) * bPsts) + ((psasVal ?? 0) * bPsas)) / totalBobot;
-                nilaiAsli = roundNumber(rawAsli, 2);
-
-                if (explicitJadiRow && !isNaN(Number(explicitJadiRow.score))) {
-                    nilaiJadi = roundNumber(Number(explicitJadiRow.score), jumlahKoma);
-                } else {
-                    let computedJadi = rawAsli + (tambahanVal ?? 0);
-                    if (minVal !== null && computedJadi < minVal) computedJadi = minVal;
-                    if (maxVal !== null && computedJadi > maxVal) computedJadi = maxVal;
-                    computedJadi = Math.min(100, Math.max(0, computedJadi));
-                    nilaiJadi = roundNumber(computedJadi, jumlahKoma);
-                }
+            if (isEligibleNilaiAsli) {
+                const avgUh = filledUhScores.reduce((sum, v) => sum + v, 0) / filledUhScores.length;
+                const rawAsli = ((avgUh * bUh) + (pstsVal * bPsts) + (psasVal * bPsas)) / totalBobot;
+                nilaiAsli = roundNumber(rawAsli, jumlahKoma);
             }
 
             // 4. Auto-generate Deskripsi Raport (hanya dari TP/CP, abaikan PSTS/PSAS/Tambahan)
-            const deskripsi = generateRaportDescription(scoredTpList, kkm);
+            const deskripsi = generateRaportDescription(scoredTpList, kkm, scaleMax);
 
             return {
                 no: idx + 1,
@@ -3966,15 +3996,53 @@
                 tpScores,
                 pstsVal,
                 psasVal,
-                tambahanVal: hasAnyCoreGrade ? (tambahanVal ?? 0) : tambahanVal,
+                tambahanVal: isEligibleNilaiAsli ? (tambahanVal ?? 0) : tambahanVal,
                 nilaiAsli,
-                nilaiJadi,
+                nilaiKatrol: nilaiAsli,
+                nilaiJadi: explicitJadiVal !== null ? roundNumber(explicitJadiVal, jumlahKoma) : nilaiAsli,
+                _hasExplicitJadi: explicitJadiVal !== null,
+                _hasNilaiAsli: isEligibleNilaiAsli,
                 peringkat: null,
                 deskripsi
             };
         });
 
-        // 5. Hitung Peringkat per Rombel berdasarkan Nilai Jadi (tie-breaker Nilai Asli)
+        // Langkah 2: Pengkatrolan Ketat linear (hanya siswa yang sudah memiliki Nilai Asli & <= targetMax)
+        const withNilaiAsli = rows.filter(r => r._hasNilaiAsli && r.nilaiAsli !== null);
+        const canScale = minVal !== null && maxVal !== null && Number.isFinite(minVal) && Number.isFinite(maxVal) && maxVal > minVal;
+
+        if (canScale && withNilaiAsli.length > 0) {
+            const eligibleKatrol = withNilaiAsli.filter(r => r.nilaiAsli <= maxVal);
+            if (eligibleKatrol.length > 0) {
+                const actualMin = Math.min(...eligibleKatrol.map(r => r.nilaiAsli));
+                const actualMax = Math.max(...eligibleKatrol.map(r => r.nilaiAsli));
+
+                // Katrol diterapkan hanya jika ada nilai di bawah batas minimum (minVal)
+                if (actualMin < minVal) {
+                    eligibleKatrol.forEach(r => {
+                        let katrolVal;
+                        if (actualMax > actualMin) {
+                            katrolVal = minVal + ((r.nilaiAsli - actualMin) / (actualMax - actualMin)) * (maxVal - minVal);
+                        } else {
+                            katrolVal = minVal;
+                        }
+                        katrolVal = Math.max(minVal, Math.min(maxVal, katrolVal));
+                        r.nilaiKatrol = roundNumber(katrolVal, jumlahKoma);
+                    });
+                }
+            }
+        }
+
+        // Langkah 3: Tambahkan Nilai Tambahan ke Nilai Jadi (jika tidak memakai nilai explicit dari DB)
+        withNilaiAsli.forEach(r => {
+            if (!r._hasExplicitJadi) {
+                const combined = r.nilaiKatrol + (r.tambahanVal ?? 0);
+                const clamped = Math.max(0, Math.min(scaleMax, combined));
+                r.nilaiJadi = roundNumber(clamped, jumlahKoma);
+            }
+        });
+
+        // Langkah 4: Hitung Peringkat per Rombel berdasarkan Nilai Jadi (tie-breaker Nilai Asli)
         const rankedIndices = rows
             .map((r, i) => ({ i, nilaiJadi: r.nilaiJadi, nilaiAsli: r.nilaiAsli }))
             .filter(item => item.nilaiJadi !== null)
@@ -4230,7 +4298,7 @@
 
                         // Estimasi tinggi baris dinamis berdasarkan panjang Deskripsi
                         const descLen = (st.deskripsi || '').length;
-                        rowObj.height = descLen > 95 ? 42 : (descLen > 48 ? 30 : 21);
+                        rowObj.height = descLen > 145 ? 56 : (descLen > 95 ? 44 : (descLen > 48 ? 30 : 21));
                     });
                 }
 
